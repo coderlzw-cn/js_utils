@@ -1,0 +1,38 @@
+{
+  "name": "utils",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cross-platform utility packages for Node.js and browsers",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint:root",
+    "lint:root": "oxlint",
+    "lint:fix": "turbo run lint:fix:root",
+    "lint:fix:root": "oxlint --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "check": "turbo run build typecheck lint:root && pnpm format:check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.59.0",
+    "oxlint": "^1.74.0",
+    "oxlint-tsgolint": "^0.25.0",
+    "tsup": "^8.5.1",
+    "turbo": "2.10.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.15.1",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@11.15.1"
+}

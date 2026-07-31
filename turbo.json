@@ -1,0 +1,43 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "globalDependencies": ["tsconfig.base.json"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**", "!.turbo/**", "!tsconfig.tsbuildinfo"],
+      "outputs": ["dist/**", "tsconfig.tsbuildinfo"]
+    },
+    "@utils/browser#build": {
+      "dependsOn": ["@utils/shared#build"],
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**", "!.turbo/**"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**", "!.turbo/**", "!tsconfig.tsbuildinfo"],
+      "outputs": []
+    },
+    "@utils/browser#typecheck": {
+      "dependsOn": ["@utils/shared#typecheck"],
+      "inputs": ["$TURBO_DEFAULT$", "!dist/**", "!.turbo/**"],
+      "outputs": []
+    },
+    "//#lint:root": {
+      "inputs": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "turbo.json",
+        "tsconfig*.json",
+        "packages/*/package.json",
+        "packages/*/src/**/*.ts",
+        "packages/*/tsconfig.json",
+        "packages/*/tsup.config.ts",
+        "tests/**/*.mjs"
+      ],
+      "outputs": []
+    },
+    "//#lint:fix:root": {
+      "cache": false
+    }
+  }
+}

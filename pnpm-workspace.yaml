@@ -1,0 +1,11 @@
+packages:
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+
+# pnpm is already managed by Volta in this environment.
+pmOnFail: ignore
+
+# Keep build and test scripts deterministic in non-interactive environments.
+verifyDepsBeforeRun: false
