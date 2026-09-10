@@ -47,14 +47,42 @@ const HTML_ESCAPE_LOOKUP: Readonly<Record<string, string>> = {
   "'": "&#39;",
 };
 
+/** 判断字符串是否包含 C0/C1 控制字符（U+0000–001F、U+007F–009F）。 */
+export function containsControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+  });
+}
+
 /** 判断值是否为空字符串或仅包含 Unicode 空白。 */
 export function isBlank(value: string | null | undefined): boolean {
-  return value == null || value.trim().length === 0;
+  return value === null || value === undefined || value.trim().length === 0;
 }
 
 /** 判断未知值是否为字符串，并提供 TypeScript 类型收窄。 */
 export function isString(value: unknown): value is string {
   return typeof value === "string";
+}
+
+/**
+ * 比较两个 UTF-8 字符串，并完整扫描两侧字节，避免普通字符串比较的提前返回。
+ *
+ * 本函数只依赖跨运行时的 TextEncoder，可同时用于现代浏览器和 Node.js。由于
+ * JavaScript 引擎可能进行 JIT 优化，它不提供密码学意义上的严格恒定时间保证；
+ * 高价值密钥或认证标签应交由运行时提供的密码学 API 比较。
+ */
+export function safeEqual(first: string, second: string): boolean {
+  const firstBytes = new TextEncoder().encode(first);
+  const secondBytes = new TextEncoder().encode(second);
+  const length = Math.max(firstBytes.length, secondBytes.length);
+  let difference = firstBytes.length ^ secondBytes.length;
+
+  for (let index = 0; index < length; index += 1) {
+    difference |= (firstBytes[index] ?? 0) ^ (secondBytes[index] ?? 0);
+  }
+
+  return difference === 0;
 }
 
 /**

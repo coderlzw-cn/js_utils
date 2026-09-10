@@ -36,7 +36,13 @@ export interface AppErrorOptions {
 export type WrapErrorOptions = Omit<AppErrorOptions, "cause">;
 
 /** 可安全 JSON 序列化的值。 */
-export type ErrorJsonValue = boolean | number | string | null | ErrorJsonValue[] | { readonly [key: string]: ErrorJsonValue };
+export type ErrorJsonValue =
+  | boolean
+  | number
+  | string
+  | null
+  | ErrorJsonValue[]
+  | { readonly [key: string]: ErrorJsonValue };
 
 /** 可持久化或发送到日志系统的错误结构。 */
 export interface SerializedError {
@@ -126,14 +132,21 @@ const DEFAULT_SENSITIVE_KEYS = [
   "privatekey",
 ] as const;
 
-/** 将捕获到的 unknown 异常转换为可读错误文本。 */
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 /**
  * 带稳定错误码、因果链和安全公开策略的业务错误。
  *
  * `details` 适合存放资源 ID、重试次数等诊断上下文，不应直接作为 API 响应返回。
+ *
+ * @example
+ * const error = new AppError('订单不存在', {
+ *   code: 'ORDER_NOT_FOUND',
+ *   statusCode: 404,
+ *   details: { orderId: 'order-123' },
+ *   expose: true,
+ * });
+ *
+ * error.code; // "ORDER_NOT_FOUND"
+ * error.retryable; // false
  */
 export class AppError extends Error {
   readonly code: string;
@@ -156,7 +169,15 @@ export class AppError extends Error {
   }
 }
 
-/** 判断未知值是否为真正的 Error，包括来自其他 JavaScript realm 的 Error 对象。 */
+/**
+ * 判断未知值是否为真正的 Error，包括来自其他 JavaScript realm 的 Error 对象。
+ *
+ * @example
+ * const value: unknown = new TypeError('参数错误');
+ * if (isError(value)) {
+ *   console.error(value.message);
+ * }
+ */
 export function isError(value: unknown): value is Error {
   if (value instanceof Error) {
     return true;
@@ -176,19 +197,51 @@ export function isError(value: unknown): value is Error {
  * 判断未知值是否具有字符串 name 和 message。
  *
  * 适合识别跨 RPC 边界后丢失 Error 原型的错误数据；它不会承诺对象具有完整 Error API。
+ *
+ * @example
+ * const rpcError: unknown = { name: 'RemoteError', message: '远程调用失败' };
+ * if (isErrorLike(rpcError)) {
+ *   console.error(`${rpcError.name}: ${rpcError.message}`);
+ * }
  */
 export function isErrorLike(value: unknown): value is ErrorLike {
-  return isObjectRecord(value) && typeof readProperty(value, "name") === "string" && typeof readProperty(value, "message") === "string";
+  return (
+    isObjectRecord(value) &&
+    typeof readProperty(value, "name") === "string" &&
+    typeof readProperty(value, "message") === "string"
+  );
 }
 
-/** 判断未知错误是否具有指定的错误名称。 */
-export function isErrorWithName<Name extends string>(error: unknown, name: Name): error is ErrorLike & { readonly name: Name } {
+/**
+ * 判断未知错误是否具有指定的错误名称。
+ *
+ * @example
+ * const error: unknown = { name: 'AbortError', message: '请求已取消' };
+ * if (isErrorWithName(error, 'AbortError')) {
+ *   console.info(error.message);
+ * }
+ */
+export function isErrorWithName<Name extends string>(
+  error: unknown,
+  name: Name,
+): error is ErrorLike & { readonly name: Name } {
   return isErrorLike(error) && readProperty(error, "name") === name;
 }
 
-/** 判断未知错误是否具有指定的字符串错误码。 */
-export function isErrorWithCode<Code extends string>(error: unknown, code: Code): error is Error & { readonly code: Code } {
-  return isError(error) && isObjectRecord(error) && readProperty(error, "code") === code;
+/**
+ * 判断未知错误是否具有指定的字符串错误码。
+ *
+ * @example
+ * const fileError: unknown = Object.assign(new Error('配置文件不存在'), { code: 'ENOENT' });
+ * if (isErrorWithCode(fileError, 'ENOENT')) {
+ *   console.warn(fileError.message);
+ * }
+ */
+export function isErrorWithCode<Code extends string>(
+  error: unknown,
+  code: Code,
+): error is Error & { readonly code: Code } {
+  return isError(error) && readProperty(error, "code") === code;
 }
 
 /**
@@ -196,6 +249,14 @@ export function isErrorWithCode<Code extends string>(error: unknown, code: Code)
  *
  * Error 会原样返回；字符串会作为消息；类似 Error 的跨 realm 对象会保留名称、cause
  * 和 stack。其他值使用 fallbackMessage，并作为 cause 保留，避免诊断信息丢失。
+ *
+ * @example
+ * const normalized = toError({ reason: 'timeout' }, '请求失败');
+ * normalized.message; // "请求失败"
+ * normalized.cause; // { reason: "timeout" }
+ *
+ * const existing = new Error('数据库不可用');
+ * toError(existing) === existing; // true
  */
 export function toError(value: unknown, fallbackMessage = "Unknown error"): Error {
   if (value instanceof Error) {
@@ -207,10 +268,10 @@ export function toError(value: unknown, fallbackMessage = "Unknown error"): Erro
   }
 
   if (isErrorLike(value)) {
-    const message = readProperty(value, "message") as string;
+    const message = getStringProperty(value, "message") ?? fallbackMessage;
     const cause = readProperty(value, "cause");
     const normalized = new Error(message, cause === undefined ? undefined : { cause });
-    normalized.name = readProperty(value, "name") as string;
+    normalized.name = getStringProperty(value, "name") ?? "Error";
     const stack = readProperty(value, "stack");
     if (typeof stack === "string") {
       normalized.stack = stack;
@@ -221,11 +282,16 @@ export function toError(value: unknown, fallbackMessage = "Unknown error"): Erro
   return new Error(fallbackMessage, { cause: value });
 }
 
-/** 获取任意抛出值的可读消息，无法提取时返回 fallbackMessage。 */
+/**
+ * 获取任意抛出值的可读消息，无法提取时返回 fallbackMessage。
+ *
+ * @example
+ * getErrorMessage(new Error('连接失败')); // "连接失败"
+ * getErrorMessage('请求超时'); // "请求超时"
+ * getErrorMessage({ status: 500 }, '未知服务错误'); // "未知服务错误"
+ */
 export function getErrorMessage(error: unknown, fallbackMessage = "Unknown error"): string {
-  if (typeof error === "string" && error.length > 0) {
-    return error;
-  }
+  if (typeof error === "string" && error.length > 0) return error;
   if (isErrorLike(error)) {
     const message = readProperty(error, "message");
     return typeof message === "string" && message.length > 0 ? message : fallbackMessage;
@@ -233,7 +299,20 @@ export function getErrorMessage(error: unknown, fallbackMessage = "Unknown error
   return fallbackMessage;
 }
 
-/** 使用 AppError 包装任意异常，同时通过标准 cause 保留原始错误。 */
+/**
+ * 使用 AppError 包装任意异常，同时通过标准 cause 保留原始错误。
+ *
+ * @example
+ * const cause = new Error('数据库连接中断');
+ * const error = wrapError(cause, '订单保存失败', {
+ *   code: 'ORDER_SAVE_FAILED',
+ *   statusCode: 503,
+ *   retryable: true,
+ * });
+ *
+ * error.cause === cause; // true
+ * error.retryable; // true
+ */
 export function wrapError(error: unknown, message: string, options: WrapErrorOptions): AppError {
   return new AppError(message, { ...options, cause: error });
 }
@@ -242,6 +321,12 @@ export function wrapError(error: unknown, message: string, options: WrapErrorOpt
  * 获取错误及其 cause 构成的有序链，首项为最外层错误。
  *
  * 循环 cause 会被安全截断；非 Error cause 会被归一化为 Error。
+ *
+ * @example
+ * const root = new Error('连接被拒绝');
+ * const outer = new Error('数据库查询失败', { cause: root });
+ * const messages = getErrorCauseChain(outer).map(({ message }) => message);
+ * // ["数据库查询失败", "连接被拒绝"]
  */
 export function getErrorCauseChain(error: unknown, maxDepth = 10): readonly Error[] {
   assertPositiveSafeInteger(maxDepth, "maxDepth");
@@ -264,7 +349,14 @@ export function getErrorCauseChain(error: unknown, maxDepth = 10): readonly Erro
   return result;
 }
 
-/** 获取 cause 链最深处的错误；无论输入为何均会返回 Error。 */
+/**
+ * 获取 cause 链最深处的错误；无论输入为何均会返回 Error。
+ *
+ * @example
+ * const root = new Error('ECONNREFUSED');
+ * const outer = new Error('服务请求失败', { cause: root });
+ * getRootCause(outer) === root; // true
+ */
 export function getRootCause(error: unknown, maxDepth = 10): Error {
   const chain = getErrorCauseChain(error, maxDepth);
   return chain[chain.length - 1] ?? toError(error);
@@ -275,8 +367,29 @@ export function getRootCause(error: unknown, maxDepth = 10): Error {
  *
  * 默认包含 name、message 和 cause，但不包含 stack、details。启用 details 后会处理
  * 循环引用、BigInt、Date、嵌套 Error，并对常见凭据字段和自定义敏感字段脱敏。
+ *
+ * @example
+ * const error = new AppError('登录失败', {
+ *   code: 'LOGIN_FAILED',
+ *   statusCode: 401,
+ *   details: { username: 'alice', accessToken: 'secret-token' },
+ * });
+ *
+ * serializeError(error, { includeDetails: true });
+ * // {
+ * //   name: "AppError",
+ * //   message: "登录失败",
+ * //   code: "LOGIN_FAILED",
+ * //   statusCode: 401,
+ * //   retryable: false,
+ * //   expose: false,
+ * //   details: { username: "alice", accessToken: "[REDACTED]" }
+ * // }
  */
-export function serializeError(error: unknown, options: SerializeErrorOptions = {}): SerializedError {
+export function serializeError(
+  error: unknown,
+  options: SerializeErrorOptions = {},
+): SerializedError {
   const resolvedOptions = resolveSerializeOptions(options);
   return serializeErrorValue(error, resolvedOptions, 0, new Set<object>());
 }
@@ -286,6 +399,18 @@ export function serializeError(error: unknown, options: SerializeErrorOptions = 
  *
  * 包含 code 的数据恢复为 AppError，其余恢复为原生 Error；cause、stack 和公开策略
  * 会一并恢复。输入应来自可信存储或经过结构校验的传输边界。
+ *
+ * @example
+ * const restored = deserializeError({
+ *   name: 'AppError',
+ *   message: '请求过于频繁',
+ *   code: 'RATE_LIMITED',
+ *   statusCode: 429,
+ *   retryable: true,
+ * });
+ *
+ * restored instanceof AppError; // true
+ * restored.message; // "请求过于频繁"
  */
 export function deserializeError(serialized: SerializedError): Error {
   return deserializeErrorValue(serialized, new WeakMap<object, Error>());
@@ -296,9 +421,31 @@ export function deserializeError(serialized: SerializedError): Error {
  *
  * 只有 `AppError.expose` 为 true 时才公开其消息和错误码，否则使用通用回退信息。
  * details 和 stack 永远不会进入返回结果。
+ *
+ * @example
+ * const error = new AppError('邮箱格式错误', {
+ *   code: 'INVALID_EMAIL',
+ *   statusCode: 400,
+ *   expose: true,
+ * });
+ *
+ * toPublicError(error);
+ * // {
+ * //   code: "INVALID_EMAIL",
+ * //   message: "邮箱格式错误",
+ * //   statusCode: 400,
+ * //   retryable: false
+ * // }
+ *
+ * toPublicError(new Error('数据库密码错误'));
+ * // 使用默认 INTERNAL_ERROR，不泄露内部消息
  */
 export function toPublicError(error: unknown, fallback: PublicErrorFallback = {}): PublicError {
-  const { code = "INTERNAL_ERROR", message = "An unexpected error occurred", statusCode = 500 } = fallback;
+  const {
+    code = "INTERNAL_ERROR",
+    message = "An unexpected error occurred",
+    statusCode = 500,
+  } = fallback;
   assertNonBlankString(code, "fallback.code");
   assertOptionalStatusCode(statusCode, "fallback.statusCode");
 
@@ -325,7 +472,15 @@ interface ResolvedSerializeErrorOptions {
 }
 
 function resolveSerializeOptions(options: SerializeErrorOptions): ResolvedSerializeErrorOptions {
-  const { includeStack = false, includeDetails = false, includeCause = true, maxCauseDepth = 5, maxValueDepth = 5, sensitiveKeys = [], redactedValue = "[REDACTED]" } = options;
+  const {
+    includeStack = false,
+    includeDetails = false,
+    includeCause = true,
+    maxCauseDepth = 5,
+    maxValueDepth = 5,
+    sensitiveKeys = [],
+    redactedValue = "[REDACTED]",
+  } = options;
   assertNonNegativeSafeInteger(maxCauseDepth, "maxCauseDepth");
   assertNonNegativeSafeInteger(maxValueDepth, "maxValueDepth");
 
@@ -335,12 +490,19 @@ function resolveSerializeOptions(options: SerializeErrorOptions): ResolvedSerial
     includeCause,
     maxCauseDepth,
     maxValueDepth,
-    sensitiveKeys: new Set([...DEFAULT_SENSITIVE_KEYS, ...sensitiveKeys].map(normalizeSensitiveKey)),
+    sensitiveKeys: new Set(
+      [...DEFAULT_SENSITIVE_KEYS, ...sensitiveKeys].map(normalizeSensitiveKey),
+    ),
     redactedValue,
   };
 }
 
-function serializeErrorValue(error: unknown, options: ResolvedSerializeErrorOptions, causeDepth: number, seen: Set<object>): SerializedError {
+function serializeErrorValue(
+  error: unknown,
+  options: ResolvedSerializeErrorOptions,
+  causeDepth: number,
+  seen: Set<object>,
+): SerializedError {
   const normalized = toError(error);
   const source = isObjectRecord(error) ? error : normalized;
   const name = getStringProperty(source, "name") ?? normalized.name;
@@ -367,12 +529,17 @@ function serializeErrorValue(error: unknown, options: ResolvedSerializeErrorOpti
     ...(options.includeStack && stack !== undefined ? { stack } : {}),
     ...(options.includeDetails && isObjectRecord(details)
       ? {
-          details: sanitizeErrorDetails(details, options, 0, new Set<object>()),
+          details: sanitizeErrorDetails(details, options, new Set<object>()),
         }
       : {}),
   };
 
-  if (options.includeCause && cause !== undefined && causeDepth < options.maxCauseDepth && !(typeof cause === "object" && cause !== null && seen.has(cause))) {
+  if (
+    options.includeCause &&
+    cause !== undefined &&
+    causeDepth < options.maxCauseDepth &&
+    !(typeof cause === "object" && cause !== null && seen.has(cause))
+  ) {
     return {
       ...result,
       cause: serializeErrorValue(cause, options, causeDepth + 1, seen),
@@ -385,24 +552,26 @@ function serializeErrorValue(error: unknown, options: ResolvedSerializeErrorOpti
 function sanitizeErrorDetails(
   details: Record<PropertyKey, unknown>,
   options: ResolvedSerializeErrorOptions,
-  depth: number,
   seen: Set<object>,
 ): Readonly<Record<string, ErrorJsonValue>> {
   const result: Record<string, ErrorJsonValue> = {};
   seen.add(details);
 
   for (const key of getEnumerableKeys(details)) {
-    if (options.sensitiveKeys.has(normalizeSensitiveKey(key))) {
-      result[key] = options.redactedValue;
-      continue;
-    }
-    result[key] = sanitizeErrorValue(readProperty(details, key), options, depth, seen);
+    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key))
+      ? options.redactedValue
+      : sanitizeErrorValue(readProperty(details, key), options, 0, seen);
   }
 
   return result;
 }
 
-function sanitizeErrorValue(value: unknown, options: ResolvedSerializeErrorOptions, depth: number, seen: Set<object>): ErrorJsonValue {
+function sanitizeErrorValue(
+  value: unknown,
+  options: ResolvedSerializeErrorOptions,
+  depth: number,
+  seen: Set<object>,
+): ErrorJsonValue {
   if (value === null || typeof value === "string" || typeof value === "boolean") {
     return value;
   }
@@ -438,7 +607,9 @@ function sanitizeErrorValue(value: unknown, options: ResolvedSerializeErrorOptio
 
   const result: Record<string, ErrorJsonValue> = {};
   for (const key of getEnumerableKeys(value)) {
-    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key)) ? options.redactedValue : sanitizeErrorValue(readProperty(value, key), options, depth + 1, seen);
+    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key))
+      ? options.redactedValue
+      : sanitizeErrorValue(readProperty(value, key), options, depth + 1, seen);
   }
   return result;
 }

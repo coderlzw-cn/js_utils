@@ -236,6 +236,24 @@ const DATE_PATTERNS: Record<DateFormatPreset, string> = {
   isoDatetime: "YYYY-MM-DDTHH:mm:ss",
 };
 
+const MILLISECONDS_PER_SECOND = 1000;
+const MILLISECONDS_PER_MINUTE = 60_000;
+const MILLISECONDS_PER_HOUR = 3_600_000;
+const MILLISECONDS_PER_DAY = 86_400_000;
+
+const RELATIVE_TIME_UNITS: readonly {
+  unit: Intl.RelativeTimeFormatUnit;
+  milliseconds: number;
+}[] = [
+  { unit: "year", milliseconds: 31_536_000_000 },
+  { unit: "month", milliseconds: 2_592_000_000 },
+  { unit: "week", milliseconds: 604_800_000 },
+  { unit: "day", milliseconds: MILLISECONDS_PER_DAY },
+  { unit: "hour", milliseconds: MILLISECONDS_PER_HOUR },
+  { unit: "minute", milliseconds: MILLISECONDS_PER_MINUTE },
+  { unit: "second", milliseconds: MILLISECONDS_PER_SECOND },
+];
+
 /**
  * 格式化日期时间。
  *
@@ -327,6 +345,13 @@ export function formatDateIntl(input: DateInput, options: FormatIntlDateOptions 
  * @example
  * formatRelativeTime(Date.now() + 3_600_000);
  * // "1小时后"
+ *
+ * @example
+ * formatRelativeTime('2026-07-16T00:00:00Z', {
+ *   base: '2026-07-15T00:00:00Z',
+ *   locale: 'zh-CN',
+ * });
+ * // "明天"
  */
 export function formatRelativeTime(
   input: DateInput,
@@ -372,6 +397,13 @@ export function formatRelativeTime(
  *   "2026-07-15 12:30:00",
  * );
  * // "2026-07-15 09:00:00 ~ 12:30:00"
+ *
+ * @example
+ * formatDateRange('2026-07-15', '2026-07-16', {
+ *   preset: 'date',
+ *   separator: ' 至 ',
+ * });
+ * // "2026-07-15 至 2026-07-16"
  */
 export function formatDateRange(
   start: DateInput,
@@ -404,7 +436,7 @@ export function formatDateRange(
     pattern: getRangeEndPattern(options.pattern, options.preset),
   });
 
-  return `${startText}${separator}${endText}`;
+  return endText === startText ? startText : `${startText}${separator}${endText}`;
 }
 
 /**
@@ -444,27 +476,27 @@ export function formatDuration(duration: number, options: FormatDurationOptions 
 
   const units = [
     {
-      value: Math.floor(remaining / 86_400_000),
+      value: Math.floor(remaining / MILLISECONDS_PER_DAY),
       compact: "d",
       normal: "天",
     },
     {
-      value: Math.floor((remaining % 86_400_000) / 3_600_000),
+      value: Math.floor((remaining % MILLISECONDS_PER_DAY) / MILLISECONDS_PER_HOUR),
       compact: "h",
       normal: "小时",
     },
     {
-      value: Math.floor((remaining % 3_600_000) / 60_000),
+      value: Math.floor((remaining % MILLISECONDS_PER_HOUR) / MILLISECONDS_PER_MINUTE),
       compact: "m",
       normal: "分钟",
     },
     {
-      value: Math.floor((remaining % 60_000) / 1000),
+      value: Math.floor((remaining % MILLISECONDS_PER_MINUTE) / MILLISECONDS_PER_SECOND),
       compact: "s",
       normal: "秒",
     },
     {
-      value: remaining % 1000,
+      value: remaining % MILLISECONDS_PER_SECOND,
       compact: "ms",
       normal: "毫秒",
     },
@@ -488,6 +520,18 @@ export function formatDuration(duration: number, options: FormatDurationOptions 
  * 将时间输入安全转换为 Date。
  *
  * @returns 无效输入返回 null。
+ *
+ * @example
+ * toDate(1_752_552_600, 'second');
+ * // Date 对象
+ *
+ * @example
+ * toDate('2026-7-5 9:3:2');
+ * // 等同于本地时间 2026-07-05 09:03:02
+ *
+ * @example
+ * toDate('not-a-date');
+ * // null
  */
 export function toDate(input: DateInput, timestampUnit: TimestampUnit = "auto"): Date | null {
   if (input instanceof Date) {
@@ -528,6 +572,10 @@ export function toDate(input: DateInput, timestampUnit: TimestampUnit = "auto"):
 
 /**
  * 判断是否为合法日期。
+ *
+ * @example
+ * isValidDate(new Date('2026-07-15T00:00:00Z')); // true
+ * isValidDate(new Date('invalid')); // false
  */
 export function isValidDate(value: unknown): value is Date {
   return value instanceof Date && Number.isFinite(value.getTime());
@@ -535,6 +583,10 @@ export function isValidDate(value: unknown): value is Date {
 
 /**
  * 判断两个时间是否为同一天。
+ *
+ * @example
+ * isSameDate('2026-07-15T00:30:00Z', '2026-07-14T23:30:00Z', 'Asia/Shanghai');
+ * // true
  */
 export function isSameDate(first: DateInput, second: DateInput, timeZone?: string): boolean {
   const firstDate = toDate(first);
@@ -569,6 +621,10 @@ export function isSameDate(first: DateInput, second: DateInput, timeZone?: strin
  * 比较两个时间。
  *
  * @returns first 较早返回 -1，相同返回 0，较晚返回 1；无效输入返回 null。
+ *
+ * @example
+ * compareDate('2026-07-14', '2026-07-15'); // -1
+ * compareDate('invalid', '2026-07-15'); // null
  */
 export function compareDate(first: DateInput, second: DateInput): -1 | 0 | 1 | null {
   const firstDate = toDate(first);
@@ -589,6 +645,9 @@ export function compareDate(first: DateInput, second: DateInput): -1 | 0 | 1 | n
 
 /**
  * 判断 first 是否早于 second。
+ *
+ * @example
+ * isBefore('2026-07-14', '2026-07-15'); // true
  */
 export function isBefore(first: DateInput, second: DateInput): boolean {
   return compareDate(first, second) === -1;
@@ -596,6 +655,9 @@ export function isBefore(first: DateInput, second: DateInput): boolean {
 
 /**
  * 判断 first 是否晚于 second。
+ *
+ * @example
+ * isAfter('2026-07-16', '2026-07-15'); // true
  */
 export function isAfter(first: DateInput, second: DateInput): boolean {
   return compareDate(first, second) === 1;
@@ -605,6 +667,10 @@ export function isAfter(first: DateInput, second: DateInput): boolean {
  * 判断时间是否在指定范围内。
  *
  * @param inclusive 是否包含起止边界，默认为 true。
+ *
+ * @example
+ * isBetween('2026-07-15', '2026-07-15', '2026-07-16'); // true
+ * isBetween('2026-07-15', '2026-07-15', '2026-07-16', false); // false
  */
 export function isBetween(
   input: DateInput,
@@ -637,6 +703,10 @@ export function isBetween(
  * 计算起止时间相差的毫秒数。
  *
  * 结果为 end - start；无效输入返回 null。
+ *
+ * @example
+ * differenceInMilliseconds('2026-07-15T00:00:00Z', '2026-07-15T00:00:01Z');
+ * // 1000
  */
 export function differenceInMilliseconds(start: DateInput, end: DateInput): number | null {
   const startDate = toDate(start);
@@ -653,28 +723,40 @@ export function differenceInMilliseconds(start: DateInput, end: DateInput): numb
  * 计算起止时间相差的完整秒数。
  *
  * 结果向零取整；无效输入返回 null。
+ *
+ * @example
+ * differenceInSeconds('2026-07-15T00:00:00Z', '2026-07-15T00:00:01.900Z');
+ * // 1
  */
 export function differenceInSeconds(start: DateInput, end: DateInput): number | null {
   const difference = differenceInMilliseconds(start, end);
 
-  return difference === null ? null : Math.trunc(difference / 1000);
+  return difference === null ? null : Math.trunc(difference / MILLISECONDS_PER_SECOND);
 }
 
 /**
  * 计算起止时间相差的完整 24 小时天数。
  *
  * 结果向零取整；无效输入返回 null。
+ *
+ * @example
+ * differenceInDays('2026-07-15T00:00:00Z', '2026-07-17T12:00:00Z');
+ * // 2
  */
 export function differenceInDays(start: DateInput, end: DateInput): number | null {
   const difference = differenceInMilliseconds(start, end);
 
-  return difference === null ? null : Math.trunc(difference / 86_400_000);
+  return difference === null ? null : Math.trunc(difference / MILLISECONDS_PER_DAY);
 }
 
 /**
  * 计算两个本地日期之间相差的自然日数。
  *
  * 该方法忽略具体时分秒和夏令时造成的一天长度变化。
+ *
+ * @example
+ * differenceInCalendarDays('2026-07-15 23:59:59', '2026-07-16 00:00:01');
+ * // 1
  */
 export function differenceInCalendarDays(start: DateInput, end: DateInput): number | null {
   const startDate = toDate(start);
@@ -687,7 +769,7 @@ export function differenceInCalendarDays(start: DateInput, end: DateInput): numb
   const startDay = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
   const endDay = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
 
-  return Math.round((endDay - startDay) / 86_400_000);
+  return Math.round((endDay - startDay) / MILLISECONDS_PER_DAY);
 }
 
 /**
@@ -736,36 +818,31 @@ export function addDate(input: DateInput, options: AddDateOptions): Date | null 
 
 /**
  * 获取输入时间所在本地日期的开始时间。
+ *
+ * @example
+ * startOfDay('2026-07-15 12:30:45');
+ * // 本地时间 2026-07-15 00:00:00.000
  */
 export function startOfDay(input: DateInput): Date | null {
-  const date = toDate(input);
-
-  if (!date) {
-    return null;
-  }
-
-  date.setHours(0, 0, 0, 0);
-
-  return date;
+  return setTimeOfDay(input, 0, 0, 0, 0);
 }
 
 /**
  * 获取输入时间所在本地日期的结束时间。
+ *
+ * @example
+ * endOfDay('2026-07-15 12:30:45');
+ * // 本地时间 2026-07-15 23:59:59.999
  */
 export function endOfDay(input: DateInput): Date | null {
-  const date = toDate(input);
-
-  if (!date) {
-    return null;
-  }
-
-  date.setHours(23, 59, 59, 999);
-
-  return date;
+  return setTimeOfDay(input, 23, 59, 59, 999);
 }
 
 /**
  * 判断输入时间是否为本地当天。
+ *
+ * @example
+ * isToday(new Date()); // true
  */
 export function isToday(input: DateInput): boolean {
   return isSameDate(input, new Date());
@@ -773,6 +850,10 @@ export function isToday(input: DateInput): boolean {
 
 /**
  * 判断指定年份是否为闰年。
+ *
+ * @example
+ * isLeapYear(2024); // true
+ * isLeapYear(2100); // false
  */
 export function isLeapYear(year: number): boolean {
   return (
@@ -787,6 +868,9 @@ export function isLeapYear(year: number): boolean {
  * 获取输入时间所在本地月份的天数。
  *
  * 无效输入返回 null。
+ *
+ * @example
+ * getDaysInMonth('2024-02-01'); // 29
  */
 export function getDaysInMonth(input: DateInput): number | null {
   const date = toDate(input);
@@ -799,20 +883,20 @@ export function getDaysInMonth(input: DateInput): number | null {
 }
 
 /**
- * 获取当前 Unix 秒级时间戳。
+ * 获取 Unix 秒级时间戳。
+ *
+ * @example
+ * getUnixTime('1970-01-01T00:00:01Z'); // 1
  */
 export function getUnixTime(input: DateInput = Date.now()): number {
-  const date = toDate(input);
-
-  if (!date) {
-    throw new TypeError("无效的时间值");
-  }
-
-  return Math.floor(date.getTime() / 1000);
+  return Math.floor(getTimestamp(input) / MILLISECONDS_PER_SECOND);
 }
 
 /**
  * 获取毫秒级时间戳。
+ *
+ * @example
+ * getTimestamp('1970-01-01T00:00:01Z'); // 1000
  */
 export function getTimestamp(input: DateInput = Date.now()): number {
   const date = toDate(input);
@@ -856,14 +940,18 @@ function getDateParts(
   const partMap = new Map(parts.map((part) => [part.type, part.value]));
 
   return {
-    year: partMap.get("year") ?? "0000",
-    month: partMap.get("month") ?? "00",
-    day: partMap.get("day") ?? "00",
-    hour: partMap.get("hour") ?? "00",
-    minute: partMap.get("minute") ?? "00",
-    second: partMap.get("second") ?? "00",
-    millisecond: String(date.getMilliseconds()).padStart(3, "0"),
+    year: padDatePart(partMap.get("year"), 4),
+    month: padDatePart(partMap.get("month"), 2),
+    day: padDatePart(partMap.get("day"), 2),
+    hour: padDatePart(partMap.get("hour"), 2),
+    minute: padDatePart(partMap.get("minute"), 2),
+    second: padDatePart(partMap.get("second"), 2),
+    millisecond: padDatePart(String(date.getMilliseconds()), 3),
   };
+}
+
+function padDatePart(value: string | undefined, length: number): string {
+  return (value ?? "").padStart(length, "0");
 }
 
 function isValidTimeZone(timeZone?: string): boolean {
@@ -919,14 +1007,24 @@ function normalizeTimestamp(value: number, unit: TimestampUnit): number {
 }
 
 function normalizeDateString(value: string): string {
-  /*
-   * 将常见的：
-   * 2026-07-15 09:30:00
-   *
-   * 转换为更符合 ISO 8601 的：
-   * 2026-07-15T09:30:00
-   */
-  return value.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)/, "$1T$2");
+  const matched =
+    /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2})(\.\d+)?)?)?(Z|[+-]\d{2}:?\d{2})?$/u.exec(
+      value,
+    );
+
+  if (!matched) {
+    return value;
+  }
+
+  const [, year, month, day, hour, minute, second, fraction = "", offset = ""] = matched;
+  const date = `${year}-${padDatePart(month, 2)}-${padDatePart(day, 2)}`;
+
+  if (hour === undefined || minute === undefined) {
+    return date;
+  }
+
+  const time = `${padDatePart(hour, 2)}:${padDatePart(minute, 2)}${second === undefined ? "" : `:${padDatePart(second, 2)}${fraction}`}`;
+  return `${date}T${time}${offset}`;
 }
 
 function selectRelativeUnit(diffMs: number): {
@@ -935,22 +1033,9 @@ function selectRelativeUnit(diffMs: number): {
 } {
   const absolute = Math.abs(diffMs);
 
-  const units: Array<{
-    unit: Intl.RelativeTimeFormatUnit;
-    milliseconds: number;
-  }> = [
-    { unit: "year", milliseconds: 31_536_000_000 },
-    { unit: "month", milliseconds: 2_592_000_000 },
-    { unit: "week", milliseconds: 604_800_000 },
-    { unit: "day", milliseconds: 86_400_000 },
-    { unit: "hour", milliseconds: 3_600_000 },
-    { unit: "minute", milliseconds: 60_000 },
-    { unit: "second", milliseconds: 1000 },
-  ];
-
-  const selected = units.find((item) => absolute >= item.milliseconds) ?? {
+  const selected = RELATIVE_TIME_UNITS.find((item) => absolute >= item.milliseconds) ?? {
     unit: "second",
-    milliseconds: 1000,
+    milliseconds: MILLISECONDS_PER_SECOND,
   };
 
   return {
@@ -975,6 +1060,27 @@ function getRangeEndPattern(pattern?: string, preset: DateFormatPreset = "dateti
   return source;
 }
 
+function setTimeOfDay(
+  input: DateInput,
+  hours: number,
+  minutes: number,
+  seconds: number,
+  milliseconds: number,
+): Date | null {
+  const date = toDate(input);
+
+  if (!date) {
+    return null;
+  }
+
+  date.setHours(hours, minutes, seconds, milliseconds);
+  return date;
+}
+
+function formatWithPreset(input: DateInput, preset: DateFormatPreset): string {
+  return formatDateTime(input, { preset });
+}
+
 /**
  * 格式化日期。
  *
@@ -983,9 +1089,7 @@ function getRangeEndPattern(pattern?: string, preset: DateFormatPreset = "dateti
  * // "2026-07-15"
  */
 export function formatDate(input: DateInput): string {
-  return formatDateTime(input, {
-    preset: "date",
-  });
+  return formatWithPreset(input, "date");
 }
 
 /**
@@ -996,9 +1100,7 @@ export function formatDate(input: DateInput): string {
  * // "09:30"
  */
 export function formatTime(input: DateInput): string {
-  return formatDateTime(input, {
-    preset: "time",
-  });
+  return formatWithPreset(input, "time");
 }
 
 /**
@@ -1009,132 +1111,27 @@ export function formatTime(input: DateInput): string {
  * // "09:30:45"
  */
 export function formatTimeSecond(input: DateInput): string {
-  return formatDateTime(input, {
-    preset: "timeSecond",
-  });
+  return formatWithPreset(input, "timeSecond");
 }
 
 /**
  * 格式化日期时间，精确到分钟。
+ *
+ * @example
+ * formatDateMinute('2026-7-5 9:3:2');
+ * // "2026-07-05 09:03"
  */
 export function formatDateMinute(input: DateInput): string {
-  return formatDateTime(input, {
-    preset: "datetime",
-  });
+  return formatWithPreset(input, "datetime");
 }
 
 /**
  * 格式化日期时间，精确到秒。
+ *
+ * @example
+ * formatDateSecond('2026-7-5 9:3:2');
+ * // "2026-07-05 09:03:02"
  */
 export function formatDateSecond(input: DateInput): string {
-  return formatDateTime(input, {
-    preset: "datetimeSecond",
-  });
+  return formatWithPreset(input, "datetimeSecond");
 }
-
-// 使用预设、自定义模板及时区格式化日期时间。
-console.log(
-  "formatDateTime:",
-  formatDateTime("2026-07-15T01:30:45.123Z", {
-    pattern: "YYYY年MM月DD日 HH:mm:ss.SSS",
-    timeZone: "Asia/Shanghai",
-  }),
-);
-
-// 使用 Intl.DateTimeFormat 的完整配置格式化本地化日期。
-console.log(
-  "formatDateIntl:",
-  formatDateIntl("2026-07-15T01:30:45.123Z", {
-    locale: "zh-CN",
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "long",
-    day: "2-digit",
-    weekday: "long",
-  }),
-);
-
-// 以固定基准时间展示相对时间，便于得到稳定的演示结果。
-console.log(
-  "formatRelativeTime:",
-  formatRelativeTime("2026-07-15T02:30:45.123Z", {
-    base: "2026-07-15T01:30:45.123Z",
-  }),
-);
-
-// 格式化同一天内的时间范围，并自动省略结束日期。
-console.log("formatDateRange:", formatDateRange("2026-07-15 09:00:00", "2026-07-15 12:30:00"));
-
-// 将毫秒数转换为最多三个单位的紧凑持续时间。
-console.log(
-  "formatDuration:",
-  formatDuration(3_723_000, {
-    compact: true,
-    maxUnits: 3,
-  }),
-);
-
-// 将 Date、字符串或时间戳安全转换为 Date，无效输入返回 null。
-console.log("toDate:", toDate(1_752_552_600, "second"));
-
-// 判断值是否为有效的 Date 实例。
-console.log("isValidDate:", isValidDate(new Date("2026-07-15T01:30:45.123Z")));
-
-// 判断两个时间在指定时区内是否属于同一天。
-console.log(
-  "isSameDate:",
-  isSameDate("2026-07-15T15:30:00Z", "2026-07-16T01:00:00Z", "Asia/Shanghai"),
-);
-
-// 比较时间先后：较早、相同、较晚分别返回 -1、0、1。
-console.log("compareDate:", compareDate("2026-07-15 09:00:00", "2026-07-15 10:00:00"));
-
-// 判断两个时间的先后关系。
-console.log("isBefore:", isBefore("2026-07-15 09:00:00", "2026-07-15 10:00:00"));
-console.log("isAfter:", isAfter("2026-07-15 10:00:00", "2026-07-15 09:00:00"));
-
-// 判断时间是否处于包含边界的范围内。
-console.log(
-  "isBetween:",
-  isBetween("2026-07-15 10:00:00", "2026-07-15 09:00:00", "2026-07-15 12:00:00"),
-);
-
-// 计算精确时间差和忽略时分秒的自然日差。
-console.log(
-  "differenceInMilliseconds:",
-  differenceInMilliseconds("2026-07-15 09:00:00", "2026-07-15 09:00:01"),
-);
-console.log(
-  "differenceInSeconds:",
-  differenceInSeconds("2026-07-15 09:00:00", "2026-07-15 09:01:30"),
-);
-console.log("differenceInDays:", differenceInDays("2026-07-15 09:00:00", "2026-07-17 09:00:00"));
-console.log(
-  "differenceInCalendarDays:",
-  differenceInCalendarDays("2026-07-15 23:00:00", "2026-07-16 01:00:00"),
-);
-
-// 按本地日历增减日期，月末会自动限制到目标月份的最后一天。
-console.log("addDate:", addDate("2024-01-31 09:30:00", { months: 1 }));
-
-// 获取本地日期的开始和结束时间。
-console.log("startOfDay:", startOfDay("2026-07-15 09:30:45"));
-console.log("endOfDay:", endOfDay("2026-07-15 09:30:45"));
-
-// 判断当天、闰年以及获取指定月份天数。
-console.log("isToday:", isToday(new Date()));
-console.log("isLeapYear:", isLeapYear(2024));
-console.log("getDaysInMonth:", getDaysInMonth("2024-02-15"));
-
-// 获取 Unix 秒级时间戳。
-console.log("getUnixTime:", getUnixTime("2026-07-15T01:30:45.123Z"));
-
-// 获取毫秒级时间戳。
-console.log("getTimestamp:", getTimestamp("2026-07-15T01:30:45.123Z"));
-
-// 以下便捷 API 分别输出日期、分钟级时间、秒级时间及不同精度的日期时间。
-console.log("formatDate:", formatDate("2026-07-15 09:30:45"));
-console.log("formatTime:", formatTime("2026-07-15 09:30:45"));
-console.log("formatTimeSecond:", formatTimeSecond("2026-07-15 09:30:45"));
-console.log("formatDateMinute:", formatDateMinute("2026-07-15 09:30:45"));
-console.log("formatDateSecond:", formatDateSecond("2026-07-15 09:30:45"));

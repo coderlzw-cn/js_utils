@@ -1,11 +1,5 @@
 import JSON5 from "json5";
 
-/**
- * JSON 文本采用的语法格式。
- *
- * - `json`：严格遵循标准 JSON 语法。
- * - `json5`：额外支持注释、尾逗号、单引号和未加引号的对象键。
- */
 export type JsonFormat = "json" | "json5";
 
 /**
@@ -24,18 +18,14 @@ export type JsonReviver = (this: unknown, key: string, value: unknown) => unknow
  */
 export type JsonReplacer = (this: unknown, key: string, value: unknown) => unknown;
 
-/**
- * 将已经确认是 JSON 对象的未知字段反序列化为业务类型。
- *
- * 调用此回调前已经排除了 `null`、数组和基本类型。实现仍应校验所有必填、
- * 可选及未知字段，并在数据无效时抛出异常。
- *
- * @template T 反序列化后得到的业务类型。
- * @param value 已通过 JSON 对象结构检查的只读键值记录。
- * @param fieldName 字段或数据名称；未配置时为 `"JSON"`。
- * @returns 校验并转换后的业务对象。
- */
-export type JsonObjectDeserializer<T> = (value: Readonly<Record<string, unknown>>, fieldName: string) => T;
+type JsonReplacerKeyList = readonly (string | number)[];
+
+interface JsonParser {
+  <T>(text: string, reviver?: JsonReviver): T;
+}
+
+// 原生 JSON.parse 的返回类型过于宽泛；在边界处按本工具公开的泛型契约收紧类型。
+const parseStandardJson: JsonParser = JSON.parse;
 
 /** JSON 解析配置。 */
 export interface ParseJsonOptions {
@@ -48,17 +38,9 @@ export interface ParseJsonOptions {
   /** 在返回解析结果前，自底向上转换每个属性值。 */
   readonly reviver?: JsonReviver;
   /**
-   * 可选的字段或数据名称，用于为解析错误补充上下文。
-   *
-   * 必须是非空字符串。配置后，语法错误会被包装为包含该名称的 `SyntaxError`。
+   * 可选的字段或数据名称，用于为解析错误补充上下文。必须是非空字符串。配置后，语法错误会被包装为包含该名称的 `SyntaxError`。
    */
   readonly fieldName?: string;
-}
-
-/** 在普通解析配置的基础上，将 JSON 对象校验并转换为业务类型。 */
-export interface DeserializeJsonObjectOptions<T> extends ParseJsonOptions {
-  /** 对已经确认是普通 JSON 对象的值执行运行时校验和类型转换。 */
-  readonly deserialize: JsonObjectDeserializer<T>;
 }
 
 /** JSON 序列化配置。 */
@@ -66,15 +48,11 @@ export interface StringifyJsonOptions {
   /* @default "json" */
   readonly format?: JsonFormat;
   /**
-   * 控制输出属性或转换属性值。
-   *
-   * 函数形式可转换每个值；字符串/数字数组形式仅保留同名对象属性。
+   * 控制输出属性或转换属性值。函数形式可转换每个值；字符串/数字数组形式仅保留同名对象属性。
    */
   readonly replacer?: JsonReplacer | readonly (string | number)[];
   /**
-   * 缩进使用的空格数或字符串，行为与 `JSON.stringify` 一致。
-   *
-   * 数字和字符串实际都最多使用 10 个空格或字符。
+   * 缩进使用的空格数或字符串，行为与 `JSON.stringify` 一致。数字和字符串实际都最多使用 10 个空格或字符。
    */
   readonly space?: string | number;
   /**
@@ -83,6 +61,12 @@ export interface StringifyJsonOptions {
    * @default false
    */
   readonly sortKeys?: boolean;
+  /**
+   * 是否递归忽略对象中值为 `undefined` 或 `null` 的字段。仅影响对象属性；顶层值和数组元素仍遵循底层序列化器的标准行为。
+   *
+   * @default false
+   */
+  readonly omitNullish?: boolean;
 }
 
 /** 解析并重新输出 JSON 文本时使用的格式化配置。 */
@@ -97,19 +81,19 @@ export interface FormatJsonOptions {
   readonly sortKeys?: boolean;
 }
 
-/** 安全解析成功后的结果；`data` 保留调用方指定或反序列化器返回的类型。 */
+/** JSON 解析成功后的结果。 */
 export interface JsonParseSuccess<T> {
   readonly success: true;
   readonly data: T;
 }
 
-/** 安全解析失败后的结果；原本抛出的值会被统一转换为 `Error`。 */
+/** JSON 解析失败后的结果；原本抛出的值会被统一转换为 `Error`。 */
 export interface JsonParseFailure {
   readonly success: false;
   readonly error: Error;
 }
 
-/** 可通过 `success` 判断成功或失败的安全解析结果。 */
+/** 可通过 `success` 判断成功或失败的 JSON 解析结果。 */
 export type JsonParseResult<T> = JsonParseSuccess<T> | JsonParseFailure;
 
 /**
@@ -121,117 +105,43 @@ export type JsonParseResult<T> = JsonParseSuccess<T> | JsonParseFailure;
  * @template T 调用方预期的返回类型，默认为 `unknown`。
  * @param text 待解析的 JSON 或 JSON5 文本。
  * @param options 输入格式、值转换回调和错误上下文配置。
- * @returns 解析并经过 `reviver` 转换后的 JavaScript 值。
- * @throws {TypeError} 参数类型不正确时抛出。
- * @throws {RangeError} `format` 不是 `"json"` 或 `"json5"` 时抛出。
- * @throws {SyntaxError} 文本不符合指定语法时抛出。
+ * @returns 成功时返回 `{ success: true, data }`，失败时返回 `{ success: false, error }`。
  *
  * @example
- * const config = parseJson<{ port: number }>("{ port: 3000, }");
+ * parseJson<{ port: number }>("{ port: 3000, }");
+ * // { success: true, data: { port: 3000 } }
+ *
+ * parseJson('{broken', { fieldName: '用户配置' });
+ * // { success: false, error: SyntaxError('用户配置 不是有效的 JSON: ...') }
  */
-export function parseJson<T = unknown>(text: string, options: ParseJsonOptions = {}) {
+export function parseJson<T = unknown>(
+  text: string,
+  options: ParseJsonOptions = {},
+): JsonParseResult<T> {
   const { format = "json5", reviver, fieldName } = options;
-  assertParseOptions(text, format, reviver, fieldName);
 
   try {
-    return format === "json" ? (JSON.parse(text, reviver as Parameters<typeof JSON.parse>[1]) as T) : JSON5.parse<T>(text, reviver);
+    assertParseOptions(text, format, reviver, fieldName);
   } catch (error) {
-    if (fieldName === undefined) {
-      throw error;
-    }
-    throw new SyntaxError(`${fieldName} 不是有效的 JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+    return { success: false, error: error instanceof Error ? error : new Error(String(error)) };
   }
-}
 
-/**
- * 将 JSON/JSON5 文本解析为对象，拒绝 null、数组和基本类型。
- *
- * 未提供 `deserialize` 时只检查结果是不是非空、非数组的对象，不会验证其中的
- * 字段类型；提供 `deserialize` 时，可在一次调用中完成结构校验和业务类型转换。
- * `fieldName` 存在时，语法错误和对象类型错误都会携带该名称。
- *
- * @template T 期望的对象类型或反序列化器返回的业务类型。
- * @param text 待解析的 JSON 或 JSON5 文本。
- * @param options 普通解析配置，或包含 `deserialize` 的业务反序列化配置。
- * @returns 解析后的对象，或 `deserialize` 的返回值。
- * @throws {TypeError} 解析结果不是 JSON 对象、参数无效或业务校验失败时抛出。
- * @throws {SyntaxError} 文本语法错误时抛出。
- */
-export function parseJsonObject<T = Record<string, unknown>>(text: string, options: ParseJsonOptions | DeserializeJsonObjectOptions<T> = {}) {
-  return parseJsonObjectValue(text, options) as T;
-}
-
-function parseJsonObjectValue(text: string, options: ParseJsonOptions | DeserializeJsonObjectOptions<unknown>) {
-  const value = parseJson(text, options);
-  if (!isJsonObject(value)) {
-    throw new TypeError(`${options.fieldName ?? "JSON"} 必须是 JSON 对象`);
+  try {
+    const data =
+      format === "json" ? parseStandardJson<T>(text, reviver) : JSON5.parse<T>(text, reviver);
+    return { success: true, data };
+  } catch (error) {
+    const normalizedError = error instanceof Error ? error : new Error(String(error));
+    return {
+      success: false,
+      error:
+        fieldName === undefined
+          ? normalizedError
+          : new SyntaxError(`${fieldName} 不是有效的 JSON: ${normalizedError.message}`, {
+              cause: error,
+            }),
+    };
   }
-  const objectValue = value as Record<string, unknown>;
-
-  // 仅在调用方显式提供反序列化器时做业务转换；否则原样返回已检查的对象。
-  if ("deserialize" in options) {
-    if (typeof options.deserialize !== "function") {
-      throw new TypeError("deserialize must be a function");
-    }
-    return options.deserialize(objectValue, options.fieldName ?? "JSON");
-  }
-  return objectValue;
-}
-
-/**
- * 尝试解析 JSON/JSON5，不会因语法错误抛出异常。
- *
- * 不仅语法错误，选项校验、`reviver` 等解析流程内的任何异常都会被捕获。成功与
- * 失败结果可通过 `success` 字段进行类型收窄。
- *
- * @template T 调用方预期的返回类型，默认为 `unknown`。
- * @param text 待解析的 JSON 或 JSON5 文本。
- * @param options 解析配置。
- * @returns 成功时包含 `data`，失败时包含标准化后的 `error`。
- */
-export function safeParseJson<T = unknown>(text: string, options: ParseJsonOptions = {}) {
-  return captureJsonParse(() => parseJson<T>(text, options));
-}
-
-/**
- * 安全解析 JSON/JSON5 对象，并保留普通泛型或反序列化器推断出的结果类型。
- *
- * 与 `parseJsonObject` 的校验规则相同，但会把语法错误、对象类型错误和业务
- * 反序列化错误包装到失败结果中，而不是向调用方抛出。
- *
- * @template T 期望的对象类型或反序列化器返回的业务类型。
- * @param text 待解析的 JSON 或 JSON5 文本。
- * @param options 普通解析配置，或包含 `deserialize` 的业务反序列化配置。
- * @returns 可通过 `success` 收窄的解析结果。
- */
-export function safeParseJsonObject<T = Record<string, unknown>>(text: string, options: ParseJsonOptions | DeserializeJsonObjectOptions<T> = {}) {
-  return captureJsonParse(() => parseJsonObjectValue(text, options) as T);
-}
-
-/**
- * 判断文本是否为合法的 JSON 或 JSON5。
- *
- * 默认按 JSON5 校验；传入 `{ format: "json" }` 可执行严格 JSON 校验。
- * 注意：只判断语法是否合法，因此数组、基本类型和 `null` 也可能返回 `true`。
- *
- * @param text 待校验的文本。
- * @param options 解析格式及可选的 `reviver` 配置。
- * @returns 文本可按指定配置成功解析时返回 `true`，否则返回 `false`。
- */
-export function isValidJson(text: string, options: ParseJsonOptions = {}) {
-  return safeParseJson(text, options).success;
-}
-
-/**
- * 判断文本是否为合法的 JSON/JSON5 对象。
- *
- * @param text 待校验的文本。
- * @param options 解析格式及可选的 `reviver` 配置。
- * @returns 文本合法且结果为非空、非数组对象时返回 `true`；数组、`null`、
- * 基本类型或语法错误均返回 `false`。
- */
-export function isValidJsonObject(text: string, options: ParseJsonOptions = {}) {
-  return safeParseJsonObject(text, options).success;
 }
 
 /**
@@ -239,7 +149,8 @@ export function isValidJsonObject(text: string, options: ParseJsonOptions = {}) 
  *
  * 与原生 `JSON.stringify` 一样，顶层的 `undefined`、函数和 Symbol 可能得到
  * `undefined`，循环引用会抛出异常。`sortKeys` 只调整对象属性顺序，不会改变
- * 数组顺序；与属性白名单同时使用时，会先过滤属性再排序。
+ * 数组顺序；与属性白名单同时使用时，会先过滤属性再排序。启用
+ * `omitNullish` 后会递归丢弃对象中的 `undefined` 和 `null` 字段，但不改变数组位置。
  *
  * @param value 待序列化的 JavaScript 值。
  * @param options 输出格式、属性转换、缩进和键排序配置。
@@ -248,15 +159,19 @@ export function isValidJsonObject(text: string, options: ParseJsonOptions = {}) 
  * @throws {RangeError} `format` 或数值缩进无效时抛出。
  */
 export function stringifyJson(value: unknown, options: StringifyJsonOptions = {}) {
-  const { format = "json", replacer, space, sortKeys = false } = options;
-  assertStringifyOptions(format, replacer, space, sortKeys);
+  const { format = "json", replacer, space, sortKeys = false, omitNullish = false } = options;
+  assertStringifyOptions(format, replacer, space, sortKeys, omitNullish);
 
-  const effectiveReplacer = createReplacer(replacer, sortKeys);
+  const effectiveReplacer = createReplacer(replacer, sortKeys, omitNullish);
   if (format === "json") {
-    return Array.isArray(effectiveReplacer) ? JSON.stringify(value, effectiveReplacer, space) : JSON.stringify(value, effectiveReplacer as JsonReplacer | undefined, space);
+    return isJsonReplacerKeyList(effectiveReplacer)
+      ? JSON.stringify(value, [...effectiveReplacer], space)
+      : JSON.stringify(value, effectiveReplacer, space);
   }
 
-  return Array.isArray(effectiveReplacer) ? JSON5.stringify(value, effectiveReplacer, space) : JSON5.stringify(value, effectiveReplacer as JsonReplacer | undefined, space);
+  return isJsonReplacerKeyList(effectiveReplacer)
+    ? JSON5.stringify(value, [...effectiveReplacer], space)
+    : JSON5.stringify(value, effectiveReplacer, space);
 }
 
 /**
@@ -273,8 +188,10 @@ export function stringifyJson(value: unknown, options: StringifyJsonOptions = {}
  */
 export function formatJson(text: string, options: FormatJsonOptions = {}) {
   const { inputFormat = "json5", outputFormat = "json", space = 2, sortKeys = false } = options;
-  const value = parseJson(text, { format: inputFormat });
-  const formatted = stringifyJson(value, {
+  const result = parseJson(text, { format: inputFormat });
+  if (!result.success) throw result.error;
+
+  const formatted = stringifyJson(result.data, {
     format: outputFormat,
     space,
     sortKeys,
@@ -283,48 +200,74 @@ export function formatJson(text: string, options: FormatJsonOptions = {}) {
   return formatted;
 }
 
-function createReplacer(replacer: JsonReplacer | readonly (string | number)[] | undefined, sortKeys: boolean) {
-  // 不排序时仅复制属性白名单，避免序列化期间意外依赖调用方后续修改的数组。
-  if (!sortKeys) {
-    return isKeyList(replacer) ? [...replacer] : replacer;
+function createReplacer(
+  replacer: JsonReplacer | JsonReplacerKeyList | undefined,
+  sortKeys: boolean,
+  omitNullish: boolean,
+): JsonReplacer | JsonReplacerKeyList | undefined {
+  const keyList = isJsonReplacerKeyList(replacer) ? replacer : undefined;
+
+  // 无需组合额外行为时保留底层序列化器的原生 replacer 处理方式。
+  if (!sortKeys && !omitNullish) {
+    return keyList ? [...keyList] : replacer;
   }
 
-  const allowedKeys = isKeyList(replacer) ? new Set(replacer.map((key) => String(key))) : undefined;
+  const allowedKeys = keyList ? new Set(keyList.map((key) => String(key))) : undefined;
   const replacerFunction = typeof replacer === "function" ? replacer : undefined;
   const sortedObjects = new WeakMap<object, Record<string, unknown>>();
+  let isRootCall = true;
 
   return function sortingReplacer(this: unknown, key: string, currentValue: unknown) {
     // 保持原生语义：先应用调用方的 replacer，再决定是否需要排序转换后的对象。
-    const replacedValue = replacerFunction ? replacerFunction.call(this, key, currentValue) : currentValue;
+    const replacedValue = replacerFunction
+      ? Reflect.apply(replacerFunction, this, [key, currentValue])
+      : currentValue;
+    const isRootValue = isRootCall;
+    isRootCall = false;
+
+    // 对象字段可被真正省略；数组元素返回 undefined 仍会输出为 null，因此保持标准语义。
+    if (
+      omitNullish &&
+      !isRootValue &&
+      !Array.isArray(this) &&
+      (replacedValue === null || replacedValue === undefined)
+    ) {
+      return undefined;
+    }
 
     if (!isJsonObject(replacedValue)) {
       return replacedValue;
     }
-    const objectValue = replacedValue as Record<string, unknown>;
-    const cached = sortedObjects.get(objectValue);
+    const cached = sortedObjects.get(replacedValue);
     if (cached !== undefined) {
       return cached;
     }
 
     // 通过按序重新插入属性构造浅对象；后续递归和值序列化仍交给底层序列化器。
     // WeakMap 保证共享引用复用同一个代理对象，同时不会阻止源对象被垃圾回收。
-    const sortedObject = Object.fromEntries(
-      Object.keys(objectValue)
-        .filter((propertyKey) => allowedKeys === undefined || allowedKeys.has(propertyKey))
-        .sort((first, second) => first.localeCompare(second))
-        .map((propertyKey) => [propertyKey, objectValue[propertyKey]] as const),
+    const propertyKeys = Object.keys(replacedValue).filter(
+      (propertyKey) => allowedKeys === undefined || allowedKeys.has(propertyKey),
     );
+    if (sortKeys) {
+      propertyKeys.sort((first, second) => first.localeCompare(second));
+    }
+    const sortedObject: Record<string, unknown> = {};
+    for (const propertyKey of propertyKeys) {
+      sortedObject[propertyKey] = replacedValue[propertyKey];
+    }
 
-    sortedObjects.set(objectValue, sortedObject);
+    sortedObjects.set(replacedValue, sortedObject);
     return sortedObject;
   };
 }
 
-function isKeyList(value: JsonReplacer | readonly (string | number)[] | undefined) {
+function isJsonReplacerKeyList(
+  value: JsonReplacer | JsonReplacerKeyList | undefined,
+): value is JsonReplacerKeyList {
   return Array.isArray(value);
 }
 
-function isJsonObject(value: unknown) {
+function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -334,7 +277,12 @@ function assertJsonFormat(format: JsonFormat) {
   }
 }
 
-function assertParseOptions(text: string, format: JsonFormat, reviver: JsonReviver | undefined, fieldName: string | undefined) {
+function assertParseOptions(
+  text: string,
+  format: JsonFormat,
+  reviver: JsonReviver | undefined,
+  fieldName: string | undefined,
+) {
   if (typeof text !== "string") throw new TypeError("text must be a string");
 
   assertJsonFormat(format);
@@ -346,12 +294,21 @@ function assertParseOptions(text: string, format: JsonFormat, reviver: JsonReviv
   }
 }
 
-function assertStringifyOptions(format: JsonFormat, replacer: JsonReplacer | readonly (string | number)[] | undefined, space: string | number | undefined, sortKeys: boolean) {
+function assertStringifyOptions(
+  format: JsonFormat,
+  replacer: JsonReplacer | readonly (string | number)[] | undefined,
+  space: string | number | undefined,
+  sortKeys: boolean,
+  omitNullish: boolean,
+) {
   assertJsonFormat(format);
   if (replacer !== undefined && typeof replacer !== "function" && !Array.isArray(replacer)) {
     throw new TypeError("replacer must be a function or an array of property names");
   }
-  if (Array.isArray(replacer) && replacer.some((key) => typeof key !== "string" && typeof key !== "number")) {
+  if (
+    Array.isArray(replacer) &&
+    replacer.some((key) => typeof key !== "string" && typeof key !== "number")
+  ) {
     throw new TypeError("replacer property names must be strings or numbers");
   }
   if (space !== undefined && typeof space !== "string" && typeof space !== "number") {
@@ -363,15 +320,7 @@ function assertStringifyOptions(format: JsonFormat, replacer: JsonReplacer | rea
   if (typeof sortKeys !== "boolean") {
     throw new TypeError("sortKeys must be a boolean");
   }
-}
-
-function captureJsonParse<T>(operation: () => T) {
-  try {
-    return { success: true as const, data: operation() };
-  } catch (error) {
-    return {
-      success: false as const,
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  if (typeof omitNullish !== "boolean") {
+    throw new TypeError("omitNullish must be a boolean");
   }
 }

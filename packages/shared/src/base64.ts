@@ -1,10 +1,3 @@
-/**
- * 跨运行时 Base64、Base64URL 编解码工具。
- *
- * 本模块使用 Uint8Array、TextEncoder 和 TextDecoder，可同时运行于现代 Node.js
- * 和浏览器环境，不依赖 Node.js Buffer。Base64 只是编码方式，不提供加密或完整性保护。
- */
-
 /** Base64 使用的字符表。 */
 export type Base64Alphabet = "standard" | "url";
 
@@ -18,7 +11,6 @@ export type Base64BinaryInput = ArrayBuffer | ArrayBufferView;
 export interface EncodeBase64Options {
   /**
    * 输出标准 Base64 或 URL 安全的 Base64URL。
-   *
    * @default "standard"
    */
   readonly alphabet?: Base64Alphabet;
@@ -118,10 +110,9 @@ const URL_SYMBOL_PATTERN = /[-_]/u;
 
 /**
  * 将二进制数据编码为 Base64 或 Base64URL。
- *
  * ArrayBufferView 只编码视图覆盖的字节范围，不会意外包含底层缓冲区的其他数据。
  */
-export function encodeBase64(input: Base64BinaryInput, options: EncodeBase64Options = {}): string {
+export function encodeBase64(input: Base64BinaryInput, options: EncodeBase64Options = {}) {
   const { alphabet = "standard", padding = alphabet === "standard" } = options;
   assertEncodeOptions(alphabet, padding);
   const bytes = toUint8Array(input);
@@ -157,7 +148,7 @@ export function encodeBase64(input: Base64BinaryInput, options: EncodeBase64Opti
 }
 
 /** 将 UTF-8 文本编码为 Base64 或 Base64URL。 */
-export function encodeBase64Text(text: string, options: EncodeBase64Options = {}): string {
+export function encodeBase64Text(text: string, options: EncodeBase64Options = {}) {
   if (typeof text !== "string") {
     throw new TypeError("text must be a string");
   }
@@ -165,18 +156,12 @@ export function encodeBase64Text(text: string, options: EncodeBase64Options = {}
 }
 
 /** 编码为 Base64URL；默认省略末尾的 `=` 填充。 */
-export function encodeBase64Url(
-  input: Base64BinaryInput,
-  options: EncodeBase64UrlOptions = {},
-): string {
+export function encodeBase64Url(input: Base64BinaryInput, options: EncodeBase64UrlOptions = {}) {
   return encodeBase64(input, { ...options, alphabet: "url" });
 }
 
 /** 将 UTF-8 文本编码为 Base64URL；默认省略末尾的 `=` 填充。 */
-export function encodeBase64UrlText(
-  text: string,
-  options: EncodeBase64UrlOptions = {},
-): string {
+export function encodeBase64UrlText(text: string, options: EncodeBase64UrlOptions = {}) {
   return encodeBase64Text(text, { ...options, alphabet: "url" });
 }
 
@@ -189,13 +174,14 @@ export function encodeBase64UrlText(
  * @throws {SyntaxError} 输入不是规范的 Base64/Base64URL。
  * @throws {RangeError} 配置非法或解码结果超过大小限制。
  */
-export function decodeBase64(input: string, options: DecodeBase64Options = {}): Uint8Array {
-  let parsed: ParsedBase64;
-  try {
-    parsed = parseBase64(input, options);
-  } catch (error) {
-    throw addFieldContext(error, options.fieldName);
-  }
+export function decodeBase64(input: string, options: DecodeBase64Options = {}) {
+  const parsed = (() => {
+    try {
+      return parseBase64(input, options);
+    } catch (error) {
+      throw addFieldContext(error, options.fieldName);
+    }
+  })();
   const output = new Uint8Array(parsed.decodedLength);
   let outputIndex = 0;
 
@@ -231,7 +217,7 @@ export function decodeBase64(input: string, options: DecodeBase64Options = {}): 
  * 默认拒绝非法 UTF-8，防止损坏数据被静默替换；可设置 `fatal: false` 获得
  * TextDecoder 的宽松替换行为。
  */
-export function decodeBase64Text(input: string, options: DecodeBase64TextOptions = {}): string {
+export function decodeBase64Text(input: string, options: DecodeBase64TextOptions = {}) {
   const { fatal = true, ...decodeOptions } = options;
   if (typeof fatal !== "boolean") {
     throw new TypeError("fatal must be a boolean");
@@ -245,10 +231,7 @@ export function decodeBase64Text(input: string, options: DecodeBase64TextOptions
 }
 
 /** 解码 Base64URL，接受规范的有填充或无填充形式。 */
-export function decodeBase64Url(
-  input: string,
-  options: DecodeBase64UrlOptions = {},
-): Uint8Array {
+export function decodeBase64Url(input: string, options: DecodeBase64UrlOptions = {}) {
   return decodeBase64(input, { ...options, alphabet: "url" });
 }
 
@@ -256,7 +239,7 @@ export function decodeBase64Url(
 export function decodeUnpaddedBase64Url(
   input: string,
   options: DecodeUnpaddedBase64UrlOptions = {},
-): Uint8Array {
+) {
   return decodeBase64Url(input, {
     ...options,
     allowPadding: false,
@@ -265,7 +248,7 @@ export function decodeUnpaddedBase64Url(
 }
 
 /** 将 Base64URL 解码为 UTF-8 文本。 */
-export function decodeBase64UrlText(input: string, options: DecodeBase64UrlTextOptions = {},): string {
+export function decodeBase64UrlText(input: string, options: DecodeBase64UrlTextOptions = {}) {
   return decodeBase64Text(input, { ...options, alphabet: "url" });
 }
 
@@ -273,7 +256,7 @@ export function decodeBase64UrlText(input: string, options: DecodeBase64UrlTextO
 export function decodeUnpaddedBase64UrlText(
   input: string,
   options: DecodeUnpaddedBase64UrlTextOptions = {},
-): string {
+) {
   return decodeBase64UrlText(input, {
     ...options,
     allowPadding: false,
@@ -282,7 +265,7 @@ export function decodeUnpaddedBase64UrlText(
 }
 
 /** 判断字符串是否为符合指定规则的 Base64/Base64URL，不会因内容非法而抛出异常。 */
-export function isValidBase64(input: string, options: DecodeBase64Options = {}): boolean {
+export function isValidBase64(input: string, options: DecodeBase64Options = {}) {
   try {
     parseBase64(input, options);
     return true;
@@ -295,10 +278,7 @@ export function isValidBase64(input: string, options: DecodeBase64Options = {}):
 }
 
 /** 判断字符串是否为符合指定规则的 Base64URL。 */
-export function isValidBase64Url(
-  input: string,
-  options: DecodeBase64UrlOptions = {},
-): boolean {
+export function isValidBase64Url(input: string, options: DecodeBase64UrlOptions = {}) {
   return isValidBase64(input, { ...options, alphabet: "url" });
 }
 
@@ -306,7 +286,7 @@ export function isValidBase64Url(
 export function isValidUnpaddedBase64Url(
   input: string,
   options: DecodeUnpaddedBase64UrlOptions = {},
-): boolean {
+) {
   return isValidBase64Url(input, {
     ...options,
     allowPadding: false,
@@ -319,7 +299,7 @@ export function isValidUnpaddedBase64Url(
  *
  * 转换前会进行完整校验，因此可安全地用于协议边界或持久化字段规范化。
  */
-export function normalizeBase64(input: string, options: NormalizeBase64Options = {}): string {
+export function normalizeBase64(input: string, options: NormalizeBase64Options = {}) {
   const {
     inputAlphabet = "auto",
     outputAlphabet,
@@ -349,13 +329,7 @@ export function normalizeBase64(input: string, options: NormalizeBase64Options =
   });
 }
 
-interface ParsedBase64 {
-  readonly content: string;
-  readonly alphabet: Base64Alphabet;
-  readonly decodedLength: number;
-}
-
-function parseBase64(input: string, options: DecodeBase64Options): ParsedBase64 {
+function parseBase64(input: string, options: DecodeBase64Options) {
   const {
     alphabet = "auto",
     allowWhitespace = false,
@@ -428,7 +402,7 @@ function parseBase64(input: string, options: DecodeBase64Options): ParsedBase64 
   return { content, alphabet: resolvedAlphabet, decodedLength };
 }
 
-function resolveAlphabet(input: string, requestedAlphabet: Base64DecodeAlphabet): Base64Alphabet {
+function resolveAlphabet(input: string, requestedAlphabet: Base64DecodeAlphabet) {
   const hasStandardSymbols = STANDARD_SYMBOL_PATTERN.test(input);
   const hasUrlSymbols = URL_SYMBOL_PATTERN.test(input);
 
@@ -445,11 +419,11 @@ function resolveAlphabet(input: string, requestedAlphabet: Base64DecodeAlphabet)
   return requestedAlphabet === "auto" ? (hasUrlSymbols ? "url" : "standard") : requestedAlphabet;
 }
 
-function detectAlphabet(input: string): Base64Alphabet {
+function detectAlphabet(input: string) {
   return URL_SYMBOL_PATTERN.test(input) ? "url" : "standard";
 }
 
-function decodeCharacter(character: string, alphabet: Base64Alphabet): number {
+function decodeCharacter(character: string, alphabet: Base64Alphabet) {
   const value = (alphabet === "url" ? URL_ALPHABET : STANDARD_ALPHABET).indexOf(character);
   if (value === -1) {
     throw new SyntaxError(
@@ -459,7 +433,7 @@ function decodeCharacter(character: string, alphabet: Base64Alphabet): number {
   return value;
 }
 
-function assertCanonicalTrailingBits(content: string, alphabet: Base64Alphabet): void {
+function assertCanonicalTrailingBits(content: string, alphabet: Base64Alphabet) {
   const remainder = content.length % 4;
   if (remainder === 0 || content.length === 0) {
     return;
@@ -474,7 +448,7 @@ function assertCanonicalTrailingBits(content: string, alphabet: Base64Alphabet):
   }
 }
 
-function toUint8Array(input: Base64BinaryInput): Uint8Array {
+function toUint8Array(input: Base64BinaryInput) {
   if (input instanceof ArrayBuffer) {
     return new Uint8Array(input);
   }
@@ -484,7 +458,7 @@ function toUint8Array(input: Base64BinaryInput): Uint8Array {
   throw new TypeError("input must be an ArrayBuffer or ArrayBufferView");
 }
 
-function assertEncodeOptions(alphabet: Base64Alphabet, padding: boolean): void {
+function assertEncodeOptions(alphabet: Base64Alphabet, padding: boolean) {
   if (alphabet !== "standard" && alphabet !== "url") {
     throw new RangeError('alphabet must be either "standard" or "url"');
   }
@@ -501,7 +475,7 @@ function assertDecodeOptions(
   requirePadding: boolean,
   maxDecodedBytes: number,
   fieldName: string | undefined,
-): void {
+) {
   if (alphabet !== "standard" && alphabet !== "url" && alphabet !== "auto") {
     throw new RangeError('alphabet must be "standard", "url", or "auto"');
   }
@@ -529,7 +503,7 @@ function assertDecodeOptions(
   }
 }
 
-function addFieldContext(error: unknown, fieldName: string | undefined): Error {
+function addFieldContext(error: unknown, fieldName: string | undefined) {
   const resolvedError = error instanceof Error ? error : new Error(String(error));
   if (typeof fieldName !== "string" || fieldName.length === 0) {
     return resolvedError;

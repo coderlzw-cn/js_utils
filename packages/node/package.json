@@ -15,7 +15,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@utils/shared": "workspace:*"
+    "@utils/shared": "workspace:*",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1"
   },
   "engines": {
     "node": ">=18"
