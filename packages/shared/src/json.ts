@@ -114,10 +114,7 @@ export type JsonParseResult<T> = JsonParseSuccess<T> | JsonParseFailure;
  * parseJson('{broken', { fieldName: '用户配置' });
  * // { success: false, error: SyntaxError('用户配置 不是有效的 JSON: ...') }
  */
-export function parseJson<T = unknown>(
-  text: string,
-  options: ParseJsonOptions = {},
-): JsonParseResult<T> {
+export function parseJson<T = unknown>(text: string, options: ParseJsonOptions = {}): JsonParseResult<T> {
   const { format = "json5", reviver, fieldName } = options;
 
   try {
@@ -127,8 +124,7 @@ export function parseJson<T = unknown>(
   }
 
   try {
-    const data =
-      format === "json" ? parseStandardJson<T>(text, reviver) : JSON5.parse<T>(text, reviver);
+    const data = format === "json" ? parseStandardJson<T>(text, reviver) : JSON5.parse<T>(text, reviver);
     return { success: true, data };
   } catch (error) {
     const normalizedError = error instanceof Error ? error : new Error(String(error));
@@ -164,14 +160,10 @@ export function stringifyJson(value: unknown, options: StringifyJsonOptions = {}
 
   const effectiveReplacer = createReplacer(replacer, sortKeys, omitNullish);
   if (format === "json") {
-    return isJsonReplacerKeyList(effectiveReplacer)
-      ? JSON.stringify(value, [...effectiveReplacer], space)
-      : JSON.stringify(value, effectiveReplacer, space);
+    return isJsonReplacerKeyList(effectiveReplacer) ? JSON.stringify(value, [...effectiveReplacer], space) : JSON.stringify(value, effectiveReplacer, space);
   }
 
-  return isJsonReplacerKeyList(effectiveReplacer)
-    ? JSON5.stringify(value, [...effectiveReplacer], space)
-    : JSON5.stringify(value, effectiveReplacer, space);
+  return isJsonReplacerKeyList(effectiveReplacer) ? JSON5.stringify(value, [...effectiveReplacer], space) : JSON5.stringify(value, effectiveReplacer, space);
 }
 
 /**
@@ -200,11 +192,7 @@ export function formatJson(text: string, options: FormatJsonOptions = {}) {
   return formatted;
 }
 
-function createReplacer(
-  replacer: JsonReplacer | JsonReplacerKeyList | undefined,
-  sortKeys: boolean,
-  omitNullish: boolean,
-): JsonReplacer | JsonReplacerKeyList | undefined {
+function createReplacer(replacer: JsonReplacer | JsonReplacerKeyList | undefined, sortKeys: boolean, omitNullish: boolean): JsonReplacer | JsonReplacerKeyList | undefined {
   const keyList = isJsonReplacerKeyList(replacer) ? replacer : undefined;
 
   // 无需组合额外行为时保留底层序列化器的原生 replacer 处理方式。
@@ -219,19 +207,12 @@ function createReplacer(
 
   return function sortingReplacer(this: unknown, key: string, currentValue: unknown) {
     // 保持原生语义：先应用调用方的 replacer，再决定是否需要排序转换后的对象。
-    const replacedValue = replacerFunction
-      ? Reflect.apply(replacerFunction, this, [key, currentValue])
-      : currentValue;
+    const replacedValue = replacerFunction ? Reflect.apply(replacerFunction, this, [key, currentValue]) : currentValue;
     const isRootValue = isRootCall;
     isRootCall = false;
 
     // 对象字段可被真正省略；数组元素返回 undefined 仍会输出为 null，因此保持标准语义。
-    if (
-      omitNullish &&
-      !isRootValue &&
-      !Array.isArray(this) &&
-      (replacedValue === null || replacedValue === undefined)
-    ) {
+    if (omitNullish && !isRootValue && !Array.isArray(this) && (replacedValue === null || replacedValue === undefined)) {
       return undefined;
     }
 
@@ -245,9 +226,7 @@ function createReplacer(
 
     // 通过按序重新插入属性构造浅对象；后续递归和值序列化仍交给底层序列化器。
     // WeakMap 保证共享引用复用同一个代理对象，同时不会阻止源对象被垃圾回收。
-    const propertyKeys = Object.keys(replacedValue).filter(
-      (propertyKey) => allowedKeys === undefined || allowedKeys.has(propertyKey),
-    );
+    const propertyKeys = Object.keys(replacedValue).filter((propertyKey) => allowedKeys === undefined || allowedKeys.has(propertyKey));
     if (sortKeys) {
       propertyKeys.sort((first, second) => first.localeCompare(second));
     }
@@ -261,9 +240,7 @@ function createReplacer(
   };
 }
 
-function isJsonReplacerKeyList(
-  value: JsonReplacer | JsonReplacerKeyList | undefined,
-): value is JsonReplacerKeyList {
+function isJsonReplacerKeyList(value: JsonReplacer | JsonReplacerKeyList | undefined): value is JsonReplacerKeyList {
   return Array.isArray(value);
 }
 
@@ -277,12 +254,7 @@ function assertJsonFormat(format: JsonFormat) {
   }
 }
 
-function assertParseOptions(
-  text: string,
-  format: JsonFormat,
-  reviver: JsonReviver | undefined,
-  fieldName: string | undefined,
-) {
+function assertParseOptions(text: string, format: JsonFormat, reviver: JsonReviver | undefined, fieldName: string | undefined) {
   if (typeof text !== "string") throw new TypeError("text must be a string");
 
   assertJsonFormat(format);
@@ -294,21 +266,12 @@ function assertParseOptions(
   }
 }
 
-function assertStringifyOptions(
-  format: JsonFormat,
-  replacer: JsonReplacer | readonly (string | number)[] | undefined,
-  space: string | number | undefined,
-  sortKeys: boolean,
-  omitNullish: boolean,
-) {
+function assertStringifyOptions(format: JsonFormat, replacer: JsonReplacer | readonly (string | number)[] | undefined, space: string | number | undefined, sortKeys: boolean, omitNullish: boolean) {
   assertJsonFormat(format);
   if (replacer !== undefined && typeof replacer !== "function" && !Array.isArray(replacer)) {
     throw new TypeError("replacer must be a function or an array of property names");
   }
-  if (
-    Array.isArray(replacer) &&
-    replacer.some((key) => typeof key !== "string" && typeof key !== "number")
-  ) {
+  if (Array.isArray(replacer) && replacer.some((key) => typeof key !== "string" && typeof key !== "number")) {
     throw new TypeError("replacer property names must be strings or numbers");
   }
   if (space !== undefined && typeof space !== "string" && typeof space !== "number") {

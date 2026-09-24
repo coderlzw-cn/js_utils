@@ -20,11 +20,7 @@ export function isPathInsideRoot(root: string, target: string): boolean {
  * 确保目标路径位于根目录内，返回解析后的绝对路径。
  * @throws {Error}
  */
-export function assertInsideRoot(
-  root: string,
-  target: string,
-  message = "路径超出允许的根目录",
-): string {
+export function assertInsideRoot(root: string, target: string, message = "路径超出允许的根目录"): string {
   const resolvedRoot = path.resolve(root);
   const resolvedTarget = path.resolve(target);
   if (!isPathInsideRoot(resolvedRoot, resolvedTarget)) {
@@ -34,10 +30,7 @@ export function assertInsideRoot(
 }
 
 /** 使用错误优先元组判断单个路径段是否合法。 */
-export function isValidPathSegment(
-  value: unknown,
-  message = "路径名称非法",
-): [error: Error | undefined, result: boolean] {
+export function isValidPathSegment(value: unknown, message = "路径名称非法"): [error: Error | undefined, result: boolean] {
   if (typeof value !== "string") return [new Error(message), false];
   const segment = value.trim();
   const valid =
@@ -56,16 +49,8 @@ export function isValidPathSegment(
  * 在指定根目录下解析相对路径，禁止空字节、绝对路径与越界。
  * @throws {Error}
  */
-export function resolvePathInside(
-  root: string,
-  requestedPath: string,
-  message = "路径非法或超出允许的根目录",
-): string {
-  if (
-    requestedPath.includes("\0") ||
-    path.isAbsolute(requestedPath) ||
-    isWindowsDriveAbsolute(requestedPath)
-  ) {
+export function resolvePathInside(root: string, requestedPath: string, message = "路径非法或超出允许的根目录"): string {
+  if (requestedPath.includes("\0") || path.isAbsolute(requestedPath) || isWindowsDriveAbsolute(requestedPath)) {
     throw new Error(message);
   }
   return assertInsideRoot(root, path.resolve(root, requestedPath), message);
@@ -75,15 +60,9 @@ export function resolvePathInside(
  * 将已持久化的路径解析为根目录内的绝对路径。相对路径相对 `root`，绝对路径仍须落在 `root` 内。
  * @throws {Error}
  */
-export function resolveContainedPath(
-  root: string,
-  storedPath: string,
-  message = "存储路径非法",
-): string {
+export function resolveContainedPath(root: string, storedPath: string, message = "存储路径非法"): string {
   if (!storedPath || storedPath.includes("\0")) throw new Error(message);
-  const target = path.isAbsolute(storedPath)
-    ? path.resolve(storedPath)
-    : path.resolve(root, storedPath);
+  const target = path.isAbsolute(storedPath) ? path.resolve(storedPath) : path.resolve(root, storedPath);
   return assertInsideRoot(root, target, message);
 }
 
@@ -96,20 +75,11 @@ export interface ArchiveEntryPathMessages {
  * 解析压缩包条目的落盘路径：规范化分隔符，拒绝空路径、NUL、绝对路径与越界。
  * @throws {Error}
  */
-export function resolveArchiveEntryPath(
-  root: string,
-  entryPath: string,
-  messages: ArchiveEntryPathMessages = {},
-): string {
+export function resolveArchiveEntryPath(root: string, entryPath: string, messages: ArchiveEntryPathMessages = {}): string {
   const invalid = messages.invalid ?? "压缩包包含非法路径";
   const traversal = messages.traversal ?? "压缩包包含越界路径";
   const normalized = entryPath.replaceAll("\\", "/");
-  if (
-    !normalized ||
-    normalized.includes("\0") ||
-    path.isAbsolute(normalized) ||
-    isWindowsDriveAbsolute(normalized)
-  ) {
+  if (!normalized || normalized.includes("\0") || path.isAbsolute(normalized) || isWindowsDriveAbsolute(normalized)) {
     throw new Error(invalid);
   }
   return resolvePathInside(root, normalized, traversal);
@@ -119,11 +89,7 @@ export function resolveArchiveEntryPath(
  * 通过 `realpath` 校验解析后的目标仍位于根目录内，防止符号链接逃逸。
  * @throws {Error}
  */
-export async function assertNoSymlinkEscape(
-  root: string,
-  target: string,
-  message = "路径指向根目录之外",
-): Promise<void> {
+export async function assertNoSymlinkEscape(root: string, target: string, message = "路径指向根目录之外"): Promise<void> {
   const [realRoot, realTarget] = await Promise.all([realpath(root), realpath(target)]);
   if (!isPathInsideRoot(realRoot, realTarget)) {
     throw new Error(message);
@@ -296,12 +262,7 @@ export function validateRelativePath(
   // - Posix 绝对路径: 开头为 /
   // - Windows 绝对路径: 开头为 盘符: 或 \
   // - UNC 路径: 开头为 // 或 \\
-  if (
-    raw.startsWith("/") ||
-    raw.startsWith("\\") ||
-    /^[a-zA-Z]:/.test(raw) ||
-    (separators === "posix" && raw.includes("\\"))
-  ) {
+  if (raw.startsWith("/") || raw.startsWith("\\") || /^[a-zA-Z]:/.test(raw) || (separators === "posix" && raw.includes("\\"))) {
     throw new Error(invalidMsg);
   }
 
@@ -331,10 +292,7 @@ export function validateRelativePath(
 }
 
 /** 使用错误优先元组判断相对路径是否合法。 */
-export function isValidRelativePath(
-  pathInput: unknown,
-  options: Parameters<typeof validateRelativePath>[1] = {},
-): [error: unknown | undefined, result: boolean] {
+export function isValidRelativePath(pathInput: unknown, options: Parameters<typeof validateRelativePath>[1] = {}): [error: unknown | undefined, result: boolean] {
   try {
     validateRelativePath(pathInput, options);
     return [undefined, true];

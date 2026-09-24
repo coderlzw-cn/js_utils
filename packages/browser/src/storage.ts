@@ -5,10 +5,7 @@ function toError(value: unknown): Error {
 }
 
 /** Reads JSON while representing unavailable storage and invalid data explicitly. */
-export function readStorage(
-  key: string,
-  storage: Storage = localStorage,
-): StorageReadResult<unknown> {
+export function readStorage(key: string, storage: Storage = localStorage): StorageReadResult<unknown> {
   try {
     const serialized = storage.getItem(key);
     const value: unknown = serialized === null ? undefined : JSON.parse(serialized);

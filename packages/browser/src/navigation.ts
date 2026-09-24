@@ -124,10 +124,7 @@ export function getAllQueryParameterValues(name: string): string[] {
  * undefined 表示保持原值，null 表示删除；数组会先删除原有同名参数，再按顺序
  * 追加非 null/undefined 值。该设计便于直接传入包含可选字段的筛选条件对象。
  */
-export function createUrlWithQueryParameters(
-  updates: Readonly<Record<string, QueryParameterUpdate>>,
-  input: string | URL = getCurrentUrl(),
-): URL {
+export function createUrlWithQueryParameters(updates: Readonly<Record<string, QueryParameterUpdate>>, input: string | URL = getCurrentUrl()): URL {
   const url = resolveUrl(input);
 
   for (const [name, update] of Object.entries(updates)) {
@@ -156,10 +153,7 @@ export function createUrlWithQueryParameters(
  *
  * 默认新增历史记录；传入 replace 可替换当前记录。操作不会触发页面刷新。
  */
-export function updateQueryParameters(
-  updates: Readonly<Record<string, QueryParameterUpdate>>,
-  options: UrlUpdateOptions = {},
-): NavigationSnapshot {
+export function updateQueryParameters(updates: Readonly<Record<string, QueryParameterUpdate>>, options: UrlUpdateOptions = {}): NavigationSnapshot {
   const url = createUrlWithQueryParameters(updates);
   return commitUrlUpdate(url, options);
 }
@@ -176,10 +170,7 @@ export function createUrlWithHash(hash: string | null, input: string | URL = get
 }
 
 /** 更新当前 URL 的 Hash 并写入 History，不触发页面刷新。 */
-export function updateHash(
-  hash: string | null,
-  options: UrlUpdateOptions = {},
-): NavigationSnapshot {
+export function updateHash(hash: string | null, options: UrlUpdateOptions = {}): NavigationSnapshot {
   return commitUrlUpdate(createUrlWithHash(hash), options);
 }
 
@@ -188,18 +179,12 @@ export function updateHash(
  *
  * History API 不允许跨源 URL，本函数会在调用浏览器 API 前抛出明确错误。
  */
-export function pushNavigationState(
-  input: string | URL = getCurrentUrl(),
-  options: HistoryNavigationOptions = {},
-): NavigationSnapshot {
+export function pushNavigationState(input: string | URL = getCurrentUrl(), options: HistoryNavigationOptions = {}): NavigationSnapshot {
   return writeHistory("push", input, options.state ?? null);
 }
 
 /** 使用 history.replaceState 替换当前同源历史记录。 */
-export function replaceNavigationState(
-  input: string | URL = getCurrentUrl(),
-  options: HistoryNavigationOptions = {},
-): NavigationSnapshot {
+export function replaceNavigationState(input: string | URL = getCurrentUrl(), options: HistoryNavigationOptions = {}): NavigationSnapshot {
   return writeHistory("replace", input, options.state ?? null);
 }
 
@@ -210,11 +195,7 @@ export function replaceNavigationState(
  * 页面卸载；若只需修改 SPA 地址，请使用 pushNavigationState 或 replaceNavigationState。
  */
 export function navigateTo(input: string | URL, options: NavigateToOptions = {}): void {
-  const {
-    allowedProtocols = ["http:", "https:"],
-    replace = false,
-    sameOriginOnly = false,
-  } = options;
+  const { allowedProtocols = ["http:", "https:"], replace = false, sameOriginOnly = false } = options;
   const browserWindow = getBrowserWindow();
   const url = resolveUrl(input, browserWindow.location.href);
 
@@ -298,10 +279,7 @@ export function setScrollRestoration(mode: ScrollRestoration): EventCleanup {
  * 本实现不会修改全局 history 方法，因此不会与路由框架发生猴子补丁冲突。
  * 路由框架直接调用 pushState/replaceState 时不会自动通知，请改用本模块写入函数。
  */
-export function observeNavigation(
-  listener: NavigationListener,
-  options: ObserveNavigationOptions = {},
-): EventCleanup {
+export function observeNavigation(listener: NavigationListener, options: ObserveNavigationOptions = {}): EventCleanup {
   const { emitInitial = true, signal } = options;
   const browserWindow = getBrowserWindow();
 
@@ -311,24 +289,9 @@ export function observeNavigation(
 
   const listenerOptions = signal ? { signal } : undefined;
   const cleanup = combineEventCleanups(
-    listenEvent<PopStateEvent>(
-      browserWindow,
-      "popstate",
-      (event) => listener(createNavigationSnapshot("popstate"), event),
-      listenerOptions,
-    ),
-    listenEvent<HashChangeEvent>(
-      browserWindow,
-      "hashchange",
-      (event) => listener(createNavigationSnapshot("hashchange"), event),
-      listenerOptions,
-    ),
-    listenEvent<CustomEvent<NavigationSnapshot>>(
-      browserWindow,
-      NAVIGATION_CHANGE_EVENT,
-      (event) => listener(event.detail, event),
-      listenerOptions,
-    ),
+    listenEvent<PopStateEvent>(browserWindow, "popstate", (event) => listener(createNavigationSnapshot("popstate"), event), listenerOptions),
+    listenEvent<HashChangeEvent>(browserWindow, "hashchange", (event) => listener(createNavigationSnapshot("hashchange"), event), listenerOptions),
+    listenEvent<CustomEvent<NavigationSnapshot>>(browserWindow, NAVIGATION_CHANGE_EVENT, (event) => listener(event.detail, event), listenerOptions),
   );
 
   if (emitInitial) {
@@ -349,11 +312,7 @@ function commitUrlUpdate(url: URL, options: UrlUpdateOptions): NavigationSnapsho
 }
 
 /** 执行同源 History 写入并广播导航变化。 */
-function writeHistory(
-  source: "push" | "replace",
-  input: string | URL,
-  state: unknown,
-): NavigationSnapshot {
+function writeHistory(source: "push" | "replace", input: string | URL, state: unknown): NavigationSnapshot {
   const browserWindow = getBrowserWindow();
   const url = resolveUrl(input, browserWindow.location.href);
 

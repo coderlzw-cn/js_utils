@@ -11,9 +11,7 @@ export interface DelayOptions {
 }
 
 /** awaitTo 成功或失败的互斥元组结果。 */
-export type AwaitToResult<Value, Failure extends NonNullable<unknown> = NonNullable<unknown>> =
-  | readonly [error: null, value: Value]
-  | readonly [error: Failure, value: undefined];
+export type AwaitToResult<Value, Failure extends NonNullable<unknown> = NonNullable<unknown>> = readonly [error: null, value: Value] | readonly [error: Failure, value: undefined];
 
 /** awaitTo 错误转换配置。 */
 export interface AwaitToOptions<Failure extends NonNullable<unknown>> {
@@ -114,11 +112,7 @@ export interface MapConcurrentOptions {
 }
 
 /** 限并发映射函数。 */
-export type ConcurrentMapper<T, R> = (
-  value: T,
-  index: number,
-  signal: AbortSignal,
-) => MaybePromise<R>;
+export type ConcurrentMapper<T, R> = (value: T, index: number, signal: AbortSignal) => MaybePromise<R>;
 
 /** 可在 Promise 外部完成或拒绝它的控制器。 */
 export interface Deferred<T> {
@@ -154,10 +148,7 @@ export class TimeoutError extends Error {
  * AbortError 的错误对象。
  */
 export function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof AbortError ||
-    (typeof error === "object" && error !== null && "name" in error && error.name === "AbortError")
-  );
+  return error instanceof AbortError || (typeof error === "object" && error !== null && "name" in error && error.name === "AbortError");
 }
 
 /**
@@ -225,10 +216,7 @@ export const sleep = delay;
  * user.id;
  */
 export function awaitTo<Value>(value: MaybePromise<Value>): Promise<AwaitToResult<Value>>;
-export function awaitTo<Value, Failure extends NonNullable<unknown>>(
-  value: MaybePromise<Value>,
-  options: AwaitToOptions<Failure>,
-): Promise<AwaitToResult<Value, Failure>>;
+export function awaitTo<Value, Failure extends NonNullable<unknown>>(value: MaybePromise<Value>, options: AwaitToOptions<Failure>): Promise<AwaitToResult<Value, Failure>>;
 export async function awaitTo<Value, Failure extends NonNullable<unknown> = NonNullable<unknown>>(
   value: MaybePromise<Value>,
   options?: AwaitToOptions<Failure>,
@@ -236,10 +224,7 @@ export async function awaitTo<Value, Failure extends NonNullable<unknown> = NonN
   try {
     return [null, await value] as const;
   } catch (error) {
-    const failure = options
-      ? options.mapError(error)
-      : ((error ??
-          new Error("Promise rejected without an error value", { cause: error })) as Failure);
+    const failure = options ? options.mapError(error) : ((error ?? new Error("Promise rejected without an error value", { cause: error })) as Failure);
     if (failure === null || failure === undefined) {
       throw new TypeError("mapError must return a non-nullish error value");
     }
@@ -253,11 +238,7 @@ export async function awaitTo<Value, Failure extends NonNullable<unknown> = NonN
  * 传入函数时，超时或外部取消会中止提供给函数的 signal；传入已经创建的
  * Promise 时无法停止其底层工作，但仍会按时拒绝并处理它后续的完成状态。
  */
-export async function withTimeout<T>(
-  task: PromiseLike<T> | AbortableTask<T>,
-  milliseconds: number,
-  options: TimeoutOptions = {},
-): Promise<T> {
+export async function withTimeout<T>(task: PromiseLike<T> | AbortableTask<T>, milliseconds: number, options: TimeoutOptions = {}): Promise<T> {
   assertNonNegativeFiniteNumber(milliseconds, "milliseconds");
 
   const { signal, message } = options;
@@ -285,20 +266,8 @@ export async function withTimeout<T>(
  * maxAttempts 包含首次执行。shouldRetry、onRetry 和退避等待期间均会检查取消
  * 状态；AbortSignal 的 reason 会原样向调用方传播。
  */
-export async function retry<T>(
-  operation: (context: RetryContext) => MaybePromise<T>,
-  options: RetryOptions = {},
-): Promise<T> {
-  const {
-    maxAttempts = 3,
-    initialDelay = 200,
-    backoffFactor = 2,
-    maxDelay = 30_000,
-    jitter = 0,
-    signal,
-    shouldRetry,
-    onRetry,
-  } = options;
+export async function retry<T>(operation: (context: RetryContext) => MaybePromise<T>, options: RetryOptions = {}): Promise<T> {
+  const { maxAttempts = 3, initialDelay = 200, backoffFactor = 2, maxDelay = 30_000, jitter = 0, signal, shouldRetry, onRetry } = options;
 
   assertPositiveInteger(maxAttempts, "maxAttempts");
   assertNonNegativeFiniteNumber(initialDelay, "initialDelay");
@@ -340,13 +309,7 @@ export async function retry<T>(
 
       throwIfAborted(operationSignal);
 
-      const retryDelay = calculateRetryDelay(
-        initialDelay,
-        backoffFactor,
-        maxDelay,
-        jitter,
-        attempt,
-      );
+      const retryDelay = calculateRetryDelay(initialDelay, backoffFactor, maxDelay, jitter, attempt);
 
       await onRetry?.({
         ...context,
@@ -373,11 +336,7 @@ export async function retry<T>(
  * 首个任务失败后会停止领取新任务，同时中止传给其他 mapper 的 signal。已经
  * 开始且忽略 signal 的底层工作可能继续运行，但其后续拒绝会被安全处理。
  */
-export async function mapConcurrent<T, R>(
-  values: readonly T[],
-  mapper: ConcurrentMapper<T, R>,
-  options: MapConcurrentOptions = {},
-): Promise<R[]> {
+export async function mapConcurrent<T, R>(values: readonly T[], mapper: ConcurrentMapper<T, R>, options: MapConcurrentOptions = {}): Promise<R[]> {
   const { concurrency = 4, signal } = options;
   assertPositiveInteger(concurrency, "concurrency");
 
@@ -536,13 +495,7 @@ function raceWithSignal<T>(value: MaybePromise<T>, signal: AbortSignal): Promise
 }
 
 /** 计算包含指数退避、上限和双向抖动的等待时间。 */
-function calculateRetryDelay(
-  initialDelay: number,
-  backoffFactor: number,
-  maxDelay: number,
-  jitter: number,
-  failedAttempt: number,
-): number {
+function calculateRetryDelay(initialDelay: number, backoffFactor: number, maxDelay: number, jitter: number, failedAttempt: number): number {
   const exponentialDelay = initialDelay * backoffFactor ** (failedAttempt - 1);
   const cappedDelay = Math.min(exponentialDelay, maxDelay);
 

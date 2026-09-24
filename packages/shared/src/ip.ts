@@ -1,8 +1,8 @@
 /**
- * 数据库/日志中 IP 字段的最大长度。
+ * 规范化后 IP 文本允许的最大长度。
  *
- * 标准 IPv6 文本最大约 45 字符，
- * 例如 IPv4 Embedded IPv6 + Zone ID 等场景。
+ * 标准 IPv6 文本最长约 45 个字符。带 Zone ID 的原始输入可以更长，
+ * 但去掉 Zone ID 之后仍超过该长度则视为非法，避免把超长字符串写入数据库或日志字段。
  */
 export const IP_MAX_LENGTH = 45;
 
@@ -19,7 +19,12 @@ const IPV4_MAPPED_PREFIX = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i;
 const IPV4_MAX = 0xffffffff;
 
 /**
- * 判断 IPv4 是否合法。
+ * 判断字符串是否为点分十进制 IPv4。
+ *
+ * 不接受前导零（`01`），也不去除首尾空白。空白和大小写请先用 {@link normalizeIp}。
+ *
+ * @param ip - 待判断的字符串。`null`、`undefined` 和空字符串返回 `false`。
+ * @returns 四个十进制段都在 0 到 255 之间时返回 `true`。
  */
 export function isIPv4(ip?: string | null): boolean {
   if (!ip) return false;
@@ -60,31 +65,31 @@ function ipv4ToIpv6Groups(ip: string): [string, string] | undefined {
     return undefined;
   }
 
-  const parts = ip.split(".").map(Number);
+  const [first, second, third, fourth] = ip.split(".").map(Number);
 
-  return [((parts[0] << 8) | parts[1]).toString(16), ((parts[2] << 8) | parts[3]).toString(16)];
+  if (first === undefined || second === undefined || third === undefined || fourth === undefined) {
+    return undefined;
+  }
+
+  return [((first << 8) | second).toString(16), ((third << 8) | fourth).toString(16)];
 }
 
 /**
- * 将 IPv6 展开成完整 8 组。
+ * 将 IPv6 展开成 8 组、无前导零的小写文本。
  *
- * 不依赖 Node.js。
+ * 会去掉 Zone ID，并把末尾的 IPv4 点分形式换成两组十六进制。不依赖 Node.js。
+ * `::` 只能出现一次。结果每组都不补齐到 4 位。
  *
- * @example
- *
- * expandIpv6('2001:db8::1')
- *
- * =>
- *
- * '2001:db8:0:0:0:0:0:1'
+ * @param ip - IPv6 文本。
+ * @returns 展开后的地址。格式非法时返回 `undefined`。
  *
  * @example
+ * expandIpv6("2001:db8::1");
+ * // "2001:db8:0:0:0:0:0:1"
  *
- * expandIpv6('::ffff:192.168.1.1')
- *
- * =>
- *
- * '0:0:0:0:0:ffff:c0a8:101'
+ * @example
+ * expandIpv6("::ffff:192.168.1.1");
+ * // "0:0:0:0:0:ffff:c0a8:101"
  */
 export function expandIpv6(ip: string): string | undefined {
   let value = ip.trim().toLowerCase();
@@ -168,7 +173,12 @@ export function expandIpv6(ip: string): string | undefined {
 }
 
 /**
- * 判断 IPv6 是否合法。
+ * 判断字符串是否为可展开的 IPv6。
+ *
+ * 允许 Zone ID 和末尾嵌入的 IPv4。不把纯 IPv4 当成 IPv6。
+ *
+ * @param ip - 待判断的字符串。`null`、`undefined` 和空字符串返回 `false`。
+ * @returns {@link expandIpv6} 成功时返回 `true`。
  */
 export function isIPv6(ip?: string | null): boolean {
   if (!ip) return false;
@@ -177,17 +187,13 @@ export function isIPv6(ip?: string | null): boolean {
 }
 
 /**
- * 判断是否为 IPv4 / IPv6。
+ * 判断 IP 版本。
  *
- * 等价于 Node.js：
+ * 返回值与 Node.js `net.isIP` 相同。不做 {@link normalizeIp} 的空白、映射地址转换。
+ * 因此 `::ffff:192.168.1.1` 返回 `6`，而不是 `4`。
  *
- * net.isIP(ip)
- *
- * @returns
- *
- * 0 非法
- * 4 IPv4
- * 6 IPv6
+ * @param ip - 待判断的字符串。
+ * @returns `4` 表示 IPv4，`6` 表示 IPv6，`0` 表示非法或空值。
  */
 export function isIP(ip?: string | null): 0 | 4 | 6 {
   if (!ip) {
@@ -208,11 +214,15 @@ export function isIP(ip?: string | null): 0 | 4 | 6 {
 /**
  * 规范化并校验 IP 地址。
  *
- * - 去除首尾空白；
- * - 转换为小写；
- * - 去除 IPv6 Zone ID；
- * - IPv4-Mapped IPv6 转换为 IPv4；
- * - 校验 IP 合法性。
+ * - 去除首尾空白并转为小写；
+ * - 去掉 IPv6 Zone ID（`fe80::1%eth0` → `fe80::1`）；
+ * - 仅把 `::ffff:` 后紧跟点分 IPv4 的映射地址转成 IPv4；
+ * - 去掉 Zone ID 后长度仍超过 {@link IP_MAX_LENGTH} 则拒绝。
+ *
+ * 不会把超长字符串截断后再校验，避免截断结果碰巧成为合法 IP。
+ *
+ * @param ip - 原始 IP 文本。
+ * @returns 规范化后的 IP。空值或非法时返回 `undefined`。
  */
 export function normalizeIp(ip?: string | null): string | undefined {
   if (!ip) {
@@ -256,10 +266,10 @@ export function normalizeIp(ip?: string | null): string | undefined {
    *
    * 192.168.1.1
    */
-  const mapped = IPV4_MAPPED_PREFIX.exec(normalized);
+  const mappedAddress = IPV4_MAPPED_PREFIX.exec(normalized)?.[1];
 
-  if (mapped) {
-    normalized = mapped[1];
+  if (mappedAddress !== undefined) {
+    normalized = mappedAddress;
   }
 
   if (normalized.length > IP_MAX_LENGTH) {
@@ -270,20 +280,24 @@ export function normalizeIp(ip?: string | null): string | undefined {
 }
 
 /**
- * 判断是否为合法 IP。
+ * 判断原始文本能否规范化为合法 IP。
+ *
+ * 与 {@link isIP} 不同，这里会先走 {@link normalizeIp}，因此接受首尾空白、Zone ID 和 `::ffff:` 映射地址。
+ *
+ * @param ip - 原始 IP 文本。
+ * @returns 规范化成功时返回 `true`。
  */
 export function isValidIp(ip?: string | null): boolean {
   return normalizeIp(ip) !== undefined;
 }
 
 /**
- * 获取 IP 版本。
+ * 获取规范化之后的 IP 版本。
  *
- * @returns
+ * `::ffff:192.168.1.1` 会先被转成 IPv4，因此返回 `4`。
  *
- * 4 IPv4
- * 6 IPv6
- * 0 非法 IP
+ * @param ip - 原始 IP 文本。
+ * @returns `4` 表示 IPv4，`6` 表示 IPv6，`0` 表示非法或空值。
  */
 export function getIpVersion(ip?: string | null): 0 | 4 | 6 {
   const normalized = normalizeIp(ip);
@@ -296,18 +310,19 @@ export function getIpVersion(ip?: string | null): 0 | 4 | 6 {
 }
 
 /**
- * 解析 X-Forwarded-For。
+ * 解析 `X-Forwarded-For`，并丢弃无法规范化的项。
  *
- * 顺序：
+ * 顺序保持为 client、proxy1、proxy2。数组会被逗号拼起来再拆分。
  *
- * client -> proxy1 -> proxy2
+ * @param ips - 请求头原值。可以是逗号分隔字符串，或框架给出的字符串数组。
+ * @returns 规范化后的 IP 列表。空值时返回空数组。
  */
-export function parseForwardedFor(ips?: string | string[] | null): string[] {
+export function parseForwardedFor(ips?: string | readonly string[] | null): string[] {
   if (!ips) {
     return [];
   }
 
-  const raw = Array.isArray(ips) ? ips.join(",") : ips;
+  const raw = typeof ips === "string" ? ips : ips.join(",");
 
   return raw
     .split(",")
@@ -316,18 +331,20 @@ export function parseForwardedFor(ips?: string | string[] | null): string[] {
 }
 
 /**
- * 从 HTTP 请求头和 Socket 地址中提取 IP。
+ * 从 HTTP 请求头和 Socket 地址中提取客户端 IP。
  *
  * 优先级：
+ * 1. `x-forwarded-for` 的第一项
+ * 2. `x-real-ip`
+ * 3. `remoteAddress`
  *
- * 1. x-forwarded-for
- * 2. x-real-ip
- * 3. remoteAddress
+ * 请求头名按小写匹配。某一项非法时继续看下一级。
+ *
+ * @param headers - 小写请求头。值可以是字符串或字符串数组。
+ * @param remoteAddress - 连接对端地址，通常来自 Socket。
+ * @returns 第一个能规范化的 IP。都没有时返回 `undefined`。
  */
-export function extractClientIp(
-  headers: Record<string, string | string[] | undefined>,
-  remoteAddress?: string | null,
-): string | undefined {
+export function extractClientIp(headers: Readonly<Record<string, string | readonly string[] | undefined>>, remoteAddress?: string | null): string | undefined {
   const forwarded = parseForwardedFor(headers["x-forwarded-for"]);
 
   if (forwarded.length > 0) {
@@ -348,13 +365,10 @@ export function extractClientIp(
 /**
  * 判断是否为回环地址。
  *
- * IPv4:
+ * IPv4 为 `127.0.0.0/8`，IPv6 为 `::1`。先做 {@link normalizeIp}。
  *
- * 127.0.0.0/8
- *
- * IPv6:
- *
- * ::1
+ * @param ip - 原始 IP 文本。
+ * @returns 属于回环地址时返回 `true`。非法 IP 返回 `false`。
  */
 export function isLoopbackIp(ip?: string | null): boolean {
   const normalized = normalizeIp(ip);
@@ -371,23 +385,20 @@ export function isLoopbackIp(ip?: string | null): boolean {
 }
 
 /**
- * IP 脱敏。
+ * 将 IP 脱敏到网络前缀，供日志使用。
  *
- * IPv4：
+ * IPv4 保留前三段，末段改为 `0`。IPv6 保留前四组，其余收成 `::`。
  *
- * 203.0.113.7
+ * @param ip - 原始 IP 文本。
+ * @returns 脱敏后的地址。非法 IP 返回 `undefined`。
  *
- * =>
+ * @example
+ * anonymizeIp("203.0.113.7");
+ * // "203.0.113.0"
  *
- * 203.0.113.0
- *
- * IPv6：
- *
- * 2001:db8:a:b:c:d:e:f
- *
- * =>
- *
- * 2001:db8:a:b::
+ * @example
+ * anonymizeIp("2001:db8:a:b:c:d:e:f");
+ * // "2001:db8:a:b::"
  */
 export function anonymizeIp(ip?: string | null): string | undefined {
   const normalized = normalizeIp(ip);
@@ -410,7 +421,12 @@ export function anonymizeIp(ip?: string | null): string | undefined {
 }
 
 /**
- * IPv4 -> 32 位无符号整数。
+ * 将 IPv4 转为 32 位无符号整数。
+ *
+ * 先做 {@link normalizeIp}。IPv6 返回 `undefined`。
+ *
+ * @param ip - 原始 IP 文本。
+ * @returns `0` 到 `0xffffffff` 的整数。不是 IPv4 时返回 `undefined`。
  */
 export function ipv4ToLong(ip?: string | null): number | undefined {
   const normalized = normalizeIp(ip);
@@ -423,7 +439,10 @@ export function ipv4ToLong(ip?: string | null): number | undefined {
 }
 
 /**
- * 32 位无符号整数 -> IPv4。
+ * 将 32 位无符号整数转回点分 IPv4。
+ *
+ * @param value - `0` 到 `0xffffffff` 的整数。
+ * @returns 点分十进制地址。超出范围或不是整数时返回 `undefined`。
  */
 export function longToIpv4(value: number): string | undefined {
   if (!Number.isInteger(value) || value < 0 || value > IPV4_MAX) {
@@ -434,13 +453,12 @@ export function longToIpv4(value: number): string | undefined {
 }
 
 /**
- * IPv6 -> bigint。
+ * 将 IPv6 转为 128 位整数。
  *
- * 用于：
+ * 可用于 CIDR、地址区间和排序。会展开压缩写法，但不走 {@link normalizeIp}，因此不会把映射地址改成 IPv4。
  *
- * - CIDR 判断
- * - IP Range 判断
- * - IPv6 排序
+ * @param ip - IPv6 文本。
+ * @returns 对应的 `bigint`。空值或非法 IPv6 返回 `undefined`。
  */
 export function ipv6ToBigInt(ip?: string | null): bigint | undefined {
   if (!ip) {
@@ -563,17 +581,13 @@ const PRIVATE_RANGES = [
 ] as const;
 
 /**
- * 判断是否为内网地址。
+ * 判断是否为内网或保留地址。
  *
- * 包含：
+ * 包含 RFC1918、CGNAT（`100.64.0.0/10`）、IPv4 链路本地、IPv6 ULA（`fc00::/7`）和 IPv6 链路本地。
+ * 不包含回环地址，回环请用 {@link isLoopbackIp}。
  *
- * - RFC1918
- * - CGNAT
- * - IPv4 Link Local
- * - IPv6 ULA
- * - IPv6 Link Local
- *
- * 不包含 loopback。
+ * @param ip - 原始 IP 文本。
+ * @returns 落在上述地址段时返回 `true`。非法 IP 返回 `false`。
  */
 export function isPrivateIp(ip?: string | null): boolean {
   const normalized = normalizeIp(ip);
@@ -587,6 +601,11 @@ export function isPrivateIp(ip?: string | null): boolean {
 
 /**
  * 判断是否为公网地址。
+ *
+ * 合法、且既不是回环也不是 {@link isPrivateIp} 所覆盖的地址段时返回 `true`。
+ *
+ * @param ip - 原始 IP 文本。
+ * @returns 可作为公网地址时返回 `true`。非法 IP 返回 `false`。
  */
 export function isPublicIp(ip?: string | null): boolean {
   const normalized = normalizeIp(ip);
@@ -600,18 +619,18 @@ export function isPublicIp(ip?: string | null): boolean {
 
 type IpRule =
   | {
-      type: "address";
-      address: string;
+      readonly type: "address";
+      readonly address: string;
     }
   | {
-      type: "cidr";
-      network: string;
-      prefix: number;
+      readonly type: "cidr";
+      readonly network: string;
+      readonly prefix: number;
     }
   | {
-      type: "range";
-      start: string;
-      end: string;
+      readonly type: "range";
+      readonly start: string;
+      readonly end: string;
     };
 
 /**
@@ -708,25 +727,20 @@ function parseIpRule(rule: string): IpRule | undefined {
 /**
  * 创建 IP 匹配器。
  *
+ * 规则在创建时解析，之后每次调用只做匹配。无法解析的规则会被跳过。
+ * 全部规则都非法时，返回的函数恒为 `false`。
+ *
  * 支持：
+ * - 单 IP：`192.168.1.100`
+ * - CIDR：`10.0.0.0/8`、`2001:db8::/32`
+ * - 闭区间：`192.168.1.1-192.168.1.50`
  *
- * 单 IP：
+ * IPv4 与 IPv6 不互相匹配。区间起点大于终点时该条规则无效。
  *
- * 192.168.1.100
- *
- * CIDR：
- *
- * 10.0.0.0/8
- *
- * IPv6 CIDR：
- *
- * 2001:db8::/32
- *
- * IP Range：
- *
- * 192.168.1.1-192.168.1.50
+ * @param rules - 匹配规则列表。
+ * @returns 判断一个 IP 是否命中任一规则的函数。入参会先规范化。
  */
-export function createIpMatcher(rules: string[]): (ip?: string | null) => boolean {
+export function createIpMatcher(rules: readonly string[]): (ip?: string | null) => boolean {
   /*
    * 创建 matcher 时预解析，
    * 避免每次请求重新解析规则。
@@ -763,15 +777,16 @@ export function createIpMatcher(rules: string[]): (ip?: string | null) => boolea
 }
 
 /**
- * 判断 IP 是否属于 CIDR / 单 IP。
+ * 判断 IP 是否命中一条规则。
+ *
+ * 规则写法与 {@link createIpMatcher} 相同，可以是单 IP、CIDR 或闭区间。
+ *
+ * @param ip - 待判断的 IP。
+ * @param cidr - 一条匹配规则。空值返回 `false`。
+ * @returns 命中时返回 `true`。
  *
  * @example
- *
- * isIpInCidr(
- *   '192.168.1.10',
- *   '192.168.1.0/24',
- * );
- *
+ * isIpInCidr("192.168.1.10", "192.168.1.0/24");
  * // true
  */
 export function isIpInCidr(ip?: string | null, cidr?: string | null): boolean {

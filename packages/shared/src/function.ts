@@ -24,10 +24,7 @@ export interface ScheduledFunctionControls<Result> {
 }
 
 /** 保留原函数参数、this 和返回值类型的 debounce 函数。 */
-export type DebouncedFunction<Fn extends CallableFunction> = ScheduledFunctionControls<
-  ReturnType<Fn>
-> &
-  ((this: ThisParameterType<Fn>, ...args: Parameters<Fn>) => ReturnType<Fn> | undefined);
+export type DebouncedFunction<Fn extends CallableFunction> = ScheduledFunctionControls<ReturnType<Fn>> & ((this: ThisParameterType<Fn>, ...args: Parameters<Fn>) => ReturnType<Fn> | undefined);
 
 /** 保留原函数参数、this 和返回值类型的 throttle 函数。 */
 export type ThrottledFunction<Fn extends CallableFunction> = DebouncedFunction<Fn>;
@@ -121,9 +118,7 @@ export function tap<T>(effect: (value: T) => void): (value: T) => T {
 }
 
 /** 创建对原断言结果取反的函数，并保留参数和 this。 */
-export function negate<Fn extends (...args: never[]) => boolean>(
-  predicate: Fn,
-): (this: ThisParameterType<Fn>, ...args: Parameters<Fn>) => boolean {
+export function negate<Fn extends (...args: never[]) => boolean>(predicate: Fn): (this: ThisParameterType<Fn>, ...args: Parameters<Fn>) => boolean {
   return function (this: ThisParameterType<Fn>, ...args: Parameters<Fn>): boolean {
     return !Reflect.apply(predicate, this, args);
   };
@@ -136,9 +131,7 @@ export function negate<Fn extends (...args: never[]) => boolean>(
  * 则所有调用共享同一个 Promise。这一语义保证底层副作用严格至多发生一次。
  * 首次调用完成前递归进入同一包装函数会抛出错误，避免返回尚未初始化的结果。
  */
-export function once<Fn extends CallableFunction>(
-  fn: Fn,
-): (this: ThisParameterType<Fn>, ...args: Parameters<Fn>) => ReturnType<Fn> {
+export function once<Fn extends CallableFunction>(fn: Fn): (this: ThisParameterType<Fn>, ...args: Parameters<Fn>) => ReturnType<Fn> {
   let called = false;
   let result: ReturnType<Fn>;
   let failure: unknown;
@@ -177,21 +170,14 @@ export function once<Fn extends CallableFunction>(
  *
  * @throws {RangeError} maxSize 不是正安全整数，或 ttl 不是非负有限数/Infinity。
  */
-export function memoize<Fn extends CallableFunction>(
-  fn: Fn,
-  options: MemoizeOptions<Fn> = {},
-): MemoizedFunction<Fn> {
+export function memoize<Fn extends CallableFunction>(fn: Fn, options: MemoizeOptions<Fn> = {}): MemoizedFunction<Fn> {
   const { maxSize = DEFAULT_MEMOIZE_MAX_SIZE, resolver, ttl = Infinity } = options;
   assertPositiveSafeInteger(maxSize, "maxSize");
   assertTimeToLive(ttl);
 
   const cache = new Map<unknown, MemoizeEntry<ReturnType<Fn>>>();
   const memoized = function (this: ThisParameterType<Fn>, ...args: Parameters<Fn>): ReturnType<Fn> {
-    const key = resolver
-      ? Reflect.apply(resolver, this, args)
-      : args.length === 0
-        ? EMPTY_ARGUMENTS_KEY
-        : args[0];
+    const key = resolver ? Reflect.apply(resolver, this, args) : args.length === 0 ? EMPTY_ARGUMENTS_KEY : args[0];
     const now = Date.now();
     const cached = cache.get(key);
 
@@ -246,11 +232,7 @@ export function memoize<Fn extends CallableFunction>(
  *
  * @throws {RangeError} wait 不是有效定时器延迟，或 leading/trailing 均为 false。
  */
-export function debounce<Fn extends CallableFunction>(
-  fn: Fn,
-  wait: number,
-  options: DebounceOptions = {},
-): DebouncedFunction<Fn> {
+export function debounce<Fn extends CallableFunction>(fn: Fn, wait: number, options: DebounceOptions = {}): DebouncedFunction<Fn> {
   assertTimerDelay(wait, "wait");
   const { leading = false, trailing = true } = options;
   assertSchedulingOptions(leading, trailing);
@@ -284,10 +266,7 @@ export function debounce<Fn extends CallableFunction>(
     }
   };
 
-  const debounced = function (
-    this: ThisParameterType<Fn>,
-    ...args: Parameters<Fn>
-  ): ReturnType<Fn> | undefined {
+  const debounced = function (this: ThisParameterType<Fn>, ...args: Parameters<Fn>): ReturnType<Fn> | undefined {
     const invokeLeading = leading && timer === undefined;
     captureCall(this, args);
 
@@ -335,11 +314,7 @@ export function debounce<Fn extends CallableFunction>(
  *
  * @throws {RangeError} wait 不是有效定时器延迟，或 leading/trailing 均为 false。
  */
-export function throttle<Fn extends CallableFunction>(
-  fn: Fn,
-  wait: number,
-  options: ThrottleOptions = {},
-): ThrottledFunction<Fn> {
+export function throttle<Fn extends CallableFunction>(fn: Fn, wait: number, options: ThrottleOptions = {}): ThrottledFunction<Fn> {
   assertTimerDelay(wait, "wait");
   const { leading = true, trailing = true } = options;
   assertSchedulingOptions(leading, trailing);
@@ -374,10 +349,7 @@ export function throttle<Fn extends CallableFunction>(
     }
   };
 
-  const throttled = function (
-    this: ThisParameterType<Fn>,
-    ...args: Parameters<Fn>
-  ): ReturnType<Fn> | undefined {
+  const throttled = function (this: ThisParameterType<Fn>, ...args: Parameters<Fn>): ReturnType<Fn> | undefined {
     captureCall(this, args);
 
     if (timer === undefined) {
@@ -416,21 +388,9 @@ export function throttle<Fn extends CallableFunction>(
 
 /** 从左到右组合一组单参数函数。 */
 export function pipe<A, B>(first: UnaryFunction<A, B>): UnaryFunction<A, B>;
-export function pipe<A, B, C>(
-  first: UnaryFunction<A, B>,
-  second: UnaryFunction<B, C>,
-): UnaryFunction<A, C>;
-export function pipe<A, B, C, D>(
-  first: UnaryFunction<A, B>,
-  second: UnaryFunction<B, C>,
-  third: UnaryFunction<C, D>,
-): UnaryFunction<A, D>;
-export function pipe<A, B, C, D, E>(
-  first: UnaryFunction<A, B>,
-  second: UnaryFunction<B, C>,
-  third: UnaryFunction<C, D>,
-  fourth: UnaryFunction<D, E>,
-): UnaryFunction<A, E>;
+export function pipe<A, B, C>(first: UnaryFunction<A, B>, second: UnaryFunction<B, C>): UnaryFunction<A, C>;
+export function pipe<A, B, C, D>(first: UnaryFunction<A, B>, second: UnaryFunction<B, C>, third: UnaryFunction<C, D>): UnaryFunction<A, D>;
+export function pipe<A, B, C, D, E>(first: UnaryFunction<A, B>, second: UnaryFunction<B, C>, third: UnaryFunction<C, D>, fourth: UnaryFunction<D, E>): UnaryFunction<A, E>;
 export function pipe<A, B, C, D, E, F>(
   first: UnaryFunction<A, B>,
   second: UnaryFunction<B, C>,
@@ -438,29 +398,15 @@ export function pipe<A, B, C, D, E, F>(
   fourth: UnaryFunction<D, E>,
   fifth: UnaryFunction<E, F>,
 ): UnaryFunction<A, F>;
-export function pipe(
-  ...functions: readonly UnaryFunction<unknown, unknown>[]
-): UnaryFunction<unknown, unknown> {
+export function pipe(...functions: readonly UnaryFunction<unknown, unknown>[]): UnaryFunction<unknown, unknown> {
   return (input) => functions.reduce((value, fn) => fn(value), input);
 }
 
 /** 从右到左组合一组单参数函数。 */
 export function compose<A, B>(first: UnaryFunction<A, B>): UnaryFunction<A, B>;
-export function compose<A, B, C>(
-  outer: UnaryFunction<B, C>,
-  inner: UnaryFunction<A, B>,
-): UnaryFunction<A, C>;
-export function compose<A, B, C, D>(
-  outer: UnaryFunction<C, D>,
-  middle: UnaryFunction<B, C>,
-  inner: UnaryFunction<A, B>,
-): UnaryFunction<A, D>;
-export function compose<A, B, C, D, E>(
-  outer: UnaryFunction<D, E>,
-  third: UnaryFunction<C, D>,
-  second: UnaryFunction<B, C>,
-  inner: UnaryFunction<A, B>,
-): UnaryFunction<A, E>;
+export function compose<A, B, C>(outer: UnaryFunction<B, C>, inner: UnaryFunction<A, B>): UnaryFunction<A, C>;
+export function compose<A, B, C, D>(outer: UnaryFunction<C, D>, middle: UnaryFunction<B, C>, inner: UnaryFunction<A, B>): UnaryFunction<A, D>;
+export function compose<A, B, C, D, E>(outer: UnaryFunction<D, E>, third: UnaryFunction<C, D>, second: UnaryFunction<B, C>, inner: UnaryFunction<A, B>): UnaryFunction<A, E>;
 export function compose<A, B, C, D, E, F>(
   outer: UnaryFunction<E, F>,
   fourth: UnaryFunction<D, E>,
@@ -468,9 +414,7 @@ export function compose<A, B, C, D, E, F>(
   second: UnaryFunction<B, C>,
   inner: UnaryFunction<A, B>,
 ): UnaryFunction<A, F>;
-export function compose(
-  ...functions: readonly UnaryFunction<unknown, unknown>[]
-): UnaryFunction<unknown, unknown> {
+export function compose(...functions: readonly UnaryFunction<unknown, unknown>[]): UnaryFunction<unknown, unknown> {
   return (input) => functions.reduceRight((value, fn) => fn(value), input);
 }
 

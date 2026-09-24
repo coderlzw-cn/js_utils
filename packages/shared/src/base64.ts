@@ -90,16 +90,10 @@ export type DecodeBase64UrlOptions = Omit<DecodeBase64Options, "alphabet">;
 export type DecodeBase64UrlTextOptions = Omit<DecodeBase64TextOptions, "alphabet">;
 
 /** 严格无填充 Base64URL 解码配置；填充策略由快捷方法固定。 */
-export type DecodeUnpaddedBase64UrlOptions = Omit<
-  DecodeBase64UrlOptions,
-  "allowPadding" | "requirePadding"
->;
+export type DecodeUnpaddedBase64UrlOptions = Omit<DecodeBase64UrlOptions, "allowPadding" | "requirePadding">;
 
 /** 严格无填充 Base64URL UTF-8 解码配置。 */
-export type DecodeUnpaddedBase64UrlTextOptions = Omit<
-  DecodeBase64UrlTextOptions,
-  "allowPadding" | "requirePadding"
->;
+export type DecodeUnpaddedBase64UrlTextOptions = Omit<DecodeBase64UrlTextOptions, "allowPadding" | "requirePadding">;
 
 const STANDARD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -126,10 +120,7 @@ export function encodeBase64(input: Base64BinaryInput, options: EncodeBase64Opti
     const combined = (first << 16) | (second << 8) | third;
     const remaining = bytes.length - index;
 
-    parts.push(
-      characters[(combined >>> 18) & 0x3f] ?? "",
-      characters[(combined >>> 12) & 0x3f] ?? "",
-    );
+    parts.push(characters[(combined >>> 18) & 0x3f] ?? "", characters[(combined >>> 12) & 0x3f] ?? "");
 
     if (remaining > 1) {
       parts.push(characters[(combined >>> 6) & 0x3f] ?? "");
@@ -190,10 +181,8 @@ export function decodeBase64(input: string, options: DecodeBase64Options = {}) {
     const second = decodeCharacter(parsed.content[index + 1] ?? "", parsed.alphabet);
     const thirdCharacter = parsed.content[index + 2];
     const fourthCharacter = parsed.content[index + 3];
-    const third =
-      thirdCharacter === undefined ? 0 : decodeCharacter(thirdCharacter, parsed.alphabet);
-    const fourth =
-      fourthCharacter === undefined ? 0 : decodeCharacter(fourthCharacter, parsed.alphabet);
+    const third = thirdCharacter === undefined ? 0 : decodeCharacter(thirdCharacter, parsed.alphabet);
+    const fourth = fourthCharacter === undefined ? 0 : decodeCharacter(fourthCharacter, parsed.alphabet);
     const combined = (first << 18) | (second << 12) | (third << 6) | fourth;
 
     output[outputIndex] = (combined >>> 16) & 0xff;
@@ -236,10 +225,7 @@ export function decodeBase64Url(input: string, options: DecodeBase64UrlOptions =
 }
 
 /** 解码严格无填充的 Base64URL，适用于 Go RawURLEncoding 等协议字段。 */
-export function decodeUnpaddedBase64Url(
-  input: string,
-  options: DecodeUnpaddedBase64UrlOptions = {},
-) {
+export function decodeUnpaddedBase64Url(input: string, options: DecodeUnpaddedBase64UrlOptions = {}) {
   return decodeBase64Url(input, {
     ...options,
     allowPadding: false,
@@ -253,10 +239,7 @@ export function decodeBase64UrlText(input: string, options: DecodeBase64UrlTextO
 }
 
 /** 将严格无填充的 Base64URL 解码为 UTF-8 文本。 */
-export function decodeUnpaddedBase64UrlText(
-  input: string,
-  options: DecodeUnpaddedBase64UrlTextOptions = {},
-) {
+export function decodeUnpaddedBase64UrlText(input: string, options: DecodeUnpaddedBase64UrlTextOptions = {}) {
   return decodeBase64UrlText(input, {
     ...options,
     allowPadding: false,
@@ -283,10 +266,7 @@ export function isValidBase64Url(input: string, options: DecodeBase64UrlOptions 
 }
 
 /** 判断字符串是否为严格无填充的 Base64URL。 */
-export function isValidUnpaddedBase64Url(
-  input: string,
-  options: DecodeUnpaddedBase64UrlOptions = {},
-) {
+export function isValidUnpaddedBase64Url(input: string, options: DecodeUnpaddedBase64UrlOptions = {}) {
   return isValidBase64Url(input, {
     ...options,
     allowPadding: false,
@@ -300,19 +280,8 @@ export function isValidUnpaddedBase64Url(
  * 转换前会进行完整校验，因此可安全地用于协议边界或持久化字段规范化。
  */
 export function normalizeBase64(input: string, options: NormalizeBase64Options = {}) {
-  const {
-    inputAlphabet = "auto",
-    outputAlphabet,
-    allowWhitespace,
-    allowEmpty,
-    allowPadding,
-    requirePadding,
-    maxDecodedBytes,
-    fieldName,
-    padding,
-  } = options;
-  const resolvedOutputAlphabet =
-    outputAlphabet ?? (inputAlphabet === "auto" ? detectAlphabet(input) : inputAlphabet);
+  const { inputAlphabet = "auto", outputAlphabet, allowWhitespace, allowEmpty, allowPadding, requirePadding, maxDecodedBytes, fieldName, padding } = options;
+  const resolvedOutputAlphabet = outputAlphabet ?? (inputAlphabet === "auto" ? detectAlphabet(input) : inputAlphabet);
   const bytes = decodeBase64(input, {
     alphabet: inputAlphabet,
     ...(allowWhitespace === undefined ? {} : { allowWhitespace }),
@@ -330,24 +299,8 @@ export function normalizeBase64(input: string, options: NormalizeBase64Options =
 }
 
 function parseBase64(input: string, options: DecodeBase64Options) {
-  const {
-    alphabet = "auto",
-    allowWhitespace = false,
-    allowEmpty = true,
-    allowPadding = true,
-    requirePadding = false,
-    maxDecodedBytes = Infinity,
-    fieldName,
-  } = options;
-  assertDecodeOptions(
-    alphabet,
-    allowWhitespace,
-    allowEmpty,
-    allowPadding,
-    requirePadding,
-    maxDecodedBytes,
-    fieldName,
-  );
+  const { alphabet = "auto", allowWhitespace = false, allowEmpty = true, allowPadding = true, requirePadding = false, maxDecodedBytes = Infinity, fieldName } = options;
+  assertDecodeOptions(alphabet, allowWhitespace, allowEmpty, allowPadding, requirePadding, maxDecodedBytes, fieldName);
   if (typeof input !== "string") {
     throw new TypeError("input must be a string");
   }
@@ -365,10 +318,7 @@ function parseBase64(input: string, options: DecodeBase64Options) {
   if (!allowEmpty && normalized.length === 0) {
     throw new SyntaxError("Base64 input must not be empty");
   }
-  if (
-    paddingLength > 2 ||
-    (firstPaddingIndex !== -1 && !/^=+$/u.test(normalized.slice(firstPaddingIndex)))
-  ) {
+  if (paddingLength > 2 || (firstPaddingIndex !== -1 && !/^=+$/u.test(normalized.slice(firstPaddingIndex)))) {
     throw new SyntaxError("Base64 input has invalid padding");
   }
   if (!allowPadding && paddingLength > 0) {
@@ -426,9 +376,7 @@ function detectAlphabet(input: string) {
 function decodeCharacter(character: string, alphabet: Base64Alphabet) {
   const value = (alphabet === "url" ? URL_ALPHABET : STANDARD_ALPHABET).indexOf(character);
   if (value === -1) {
-    throw new SyntaxError(
-      `Base64 input contains an invalid character: ${JSON.stringify(character)}`,
-    );
+    throw new SyntaxError(`Base64 input contains an invalid character: ${JSON.stringify(character)}`);
   }
   return value;
 }
@@ -440,10 +388,7 @@ function assertCanonicalTrailingBits(content: string, alphabet: Base64Alphabet) 
   }
 
   const lastValue = decodeCharacter(content.at(-1) ?? "", alphabet);
-  if (
-    (remainder === 2 && (lastValue & 0x0f) !== 0) ||
-    (remainder === 3 && (lastValue & 0x03) !== 0)
-  ) {
+  if ((remainder === 2 && (lastValue & 0x0f) !== 0) || (remainder === 3 && (lastValue & 0x03) !== 0)) {
     throw new SyntaxError("Base64 input has non-zero trailing padding bits");
   }
 }
@@ -492,10 +437,7 @@ function assertDecodeOptions(
   if (!allowPadding && requirePadding) {
     throw new RangeError("allowPadding and requirePadding cannot conflict");
   }
-  if (
-    maxDecodedBytes !== Infinity &&
-    (!Number.isSafeInteger(maxDecodedBytes) || maxDecodedBytes < 0)
-  ) {
+  if (maxDecodedBytes !== Infinity && (!Number.isSafeInteger(maxDecodedBytes) || maxDecodedBytes < 0)) {
     throw new RangeError("maxDecodedBytes must be Infinity or a non-negative safe integer");
   }
   if (fieldName !== undefined && (typeof fieldName !== "string" || fieldName.length === 0)) {

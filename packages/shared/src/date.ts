@@ -11,16 +11,7 @@ export type TimestampUnit = "auto" | "second" | "millisecond";
 /**
  * 常用日期时间格式。
  */
-export type DateFormatPreset =
-  | "date"
-  | "time"
-  | "timeSecond"
-  | "datetime"
-  | "datetimeSecond"
-  | "compactDate"
-  | "compactDatetime"
-  | "isoDate"
-  | "isoDatetime";
+export type DateFormatPreset = "date" | "time" | "timeSecond" | "datetime" | "datetimeSecond" | "compactDate" | "compactDatetime" | "isoDate" | "isoDatetime";
 
 /**
  * 日期时间格式化配置。
@@ -276,14 +267,7 @@ const RELATIVE_TIME_UNITS: readonly {
  * });
  */
 export function formatDateTime(input: DateInput, options: FormatDateOptions = {}): string {
-  const {
-    preset = "datetimeSecond",
-    pattern,
-    timestampUnit = "auto",
-    timeZone,
-    locale = "zh-CN",
-    fallback = "--",
-  } = options;
+  const { preset = "datetimeSecond", pattern, timestampUnit = "auto", timeZone, locale = "zh-CN", fallback = "--" } = options;
 
   const date = toDate(input, timestampUnit);
 
@@ -353,17 +337,8 @@ export function formatDateIntl(input: DateInput, options: FormatIntlDateOptions 
  * });
  * // "明天"
  */
-export function formatRelativeTime(
-  input: DateInput,
-  options: FormatRelativeTimeOptions = {},
-): string {
-  const {
-    base,
-    timestampUnit = "auto",
-    locale = "zh-CN",
-    numeric = "auto",
-    fallback = "--",
-  } = options;
+export function formatRelativeTime(input: DateInput, options: FormatRelativeTimeOptions = {}): string {
+  const { base, timestampUnit = "auto", locale = "zh-CN", numeric = "auto", fallback = "--" } = options;
 
   const target = toDate(input, timestampUnit);
   /*
@@ -405,18 +380,8 @@ export function formatRelativeTime(
  * });
  * // "2026-07-15 至 2026-07-16"
  */
-export function formatDateRange(
-  start: DateInput,
-  end: DateInput,
-  options: FormatDateRangeOptions = {},
-): string {
-  const {
-    separator = " ~ ",
-    collapseSameDate = true,
-    fallback = "--",
-    timestampUnit = "auto",
-    timeZone,
-  } = options;
+export function formatDateRange(start: DateInput, end: DateInput, options: FormatDateRangeOptions = {}): string {
+  const { separator = " ~ ", collapseSameDate = true, fallback = "--", timestampUnit = "auto", timeZone } = options;
 
   const startDate = toDate(start, timestampUnit);
   const endDate = toDate(end, timestampUnit);
@@ -454,13 +419,7 @@ export function formatDateRange(
  * // "1h 2m 3s"
  */
 export function formatDuration(duration: number, options: FormatDurationOptions = {}): string {
-  const {
-    inputUnit = "millisecond",
-    maxUnits = 2,
-    showMilliseconds = false,
-    compact = false,
-    fallback = "--",
-  } = options;
+  const { inputUnit = "millisecond", maxUnits = 2, showMilliseconds = false, compact = false, fallback = "--" } = options;
 
   if (!Number.isFinite(duration) || duration < 0) {
     return fallback;
@@ -607,11 +566,7 @@ export function isSameDate(first: DateInput, second: DateInput, timeZone?: strin
       ...(timeZone === undefined ? {} : { timeZone }),
     });
 
-    return (
-      firstParts.year === secondParts.year &&
-      firstParts.month === secondParts.month &&
-      firstParts.day === secondParts.day
-    );
+    return firstParts.year === secondParts.year && firstParts.month === secondParts.month && firstParts.day === secondParts.day;
   } catch {
     return false;
   }
@@ -672,12 +627,7 @@ export function isAfter(first: DateInput, second: DateInput): boolean {
  * isBetween('2026-07-15', '2026-07-15', '2026-07-16'); // true
  * isBetween('2026-07-15', '2026-07-15', '2026-07-16', false); // false
  */
-export function isBetween(
-  input: DateInput,
-  start: DateInput,
-  end: DateInput,
-  inclusive = true,
-): boolean {
+export function isBetween(input: DateInput, start: DateInput, end: DateInput, inclusive = true): boolean {
   const inputDate = toDate(input);
   const startDate = toDate(start);
   const endDate = toDate(end);
@@ -694,9 +644,7 @@ export function isBetween(
     return false;
   }
 
-  return inclusive
-    ? inputTime >= startTime && inputTime <= endTime
-    : inputTime > startTime && inputTime < endTime;
+  return inclusive ? inputTime >= startTime && inputTime <= endTime : inputTime > startTime && inputTime < endTime;
 }
 
 /**
@@ -789,15 +737,7 @@ export function addDate(input: DateInput, options: AddDateOptions): Date | null 
     return null;
   }
 
-  const {
-    years = 0,
-    months = 0,
-    days = 0,
-    hours = 0,
-    minutes = 0,
-    seconds = 0,
-    milliseconds = 0,
-  } = options;
+  const { years = 0, months = 0, days = 0, hours = 0, minutes = 0, seconds = 0, milliseconds = 0 } = options;
 
   if (years !== 0 || months !== 0) {
     const originalDay = date.getDate();
@@ -856,12 +796,7 @@ export function isToday(input: DateInput): boolean {
  * isLeapYear(2100); // false
  */
 export function isLeapYear(year: number): boolean {
-  return (
-    Number.isInteger(year) &&
-    year >= 0 &&
-    year <= 275_760 &&
-    (year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0))
-  );
+  return Number.isInteger(year) && year >= 0 && year <= 275_760 && (year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0));
 }
 
 /**
@@ -969,11 +904,7 @@ function isValidTimeZone(timeZone?: string): boolean {
 }
 
 function isValidAddDateOptions(options: AddDateOptions): boolean {
-  return (
-    typeof options === "object" &&
-    options !== null &&
-    Object.values(options).every((value) => value === undefined || Number.isInteger(value))
-  );
+  return typeof options === "object" && options !== null && Object.values(options).every((value) => value === undefined || Number.isInteger(value));
 }
 
 function applyDatePattern(pattern: string, parts: DateParts): string {
@@ -1007,10 +938,7 @@ function normalizeTimestamp(value: number, unit: TimestampUnit): number {
 }
 
 function normalizeDateString(value: string): string {
-  const matched =
-    /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2})(\.\d+)?)?)?(Z|[+-]\d{2}:?\d{2})?$/u.exec(
-      value,
-    );
+  const matched = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2})(\.\d+)?)?)?(Z|[+-]\d{2}:?\d{2})?$/u.exec(value);
 
   if (!matched) {
     return value;
@@ -1060,13 +988,7 @@ function getRangeEndPattern(pattern?: string, preset: DateFormatPreset = "dateti
   return source;
 }
 
-function setTimeOfDay(
-  input: DateInput,
-  hours: number,
-  minutes: number,
-  seconds: number,
-  milliseconds: number,
-): Date | null {
+function setTimeOfDay(input: DateInput, hours: number, minutes: number, seconds: number, milliseconds: number): Date | null {
   const date = toDate(input);
 
   if (!date) {

@@ -1,10 +1,8 @@
 import "dotenv/config";
 
-const hasEnvValue = (value: string | undefined): value is string =>
-  value !== undefined && value.trim() !== "";
+const hasEnvValue = (value: string | undefined): value is string => value !== undefined && value.trim() !== "";
 
-const requiredEnvError = (key: string, expectedType?: string): Error =>
-  new Error(`缺少或无效的 ${key} 环境变量${expectedType ? `，期望类型为 ${expectedType}` : ""}`);
+const requiredEnvError = (key: string, expectedType?: string): Error => new Error(`缺少或无效的 ${key} 环境变量${expectedType ? `，期望类型为 ${expectedType}` : ""}`);
 
 /**
  * 获取字符串环境变量
@@ -111,16 +109,8 @@ export function getRequiredEnvBool(key: string): boolean {
  * @param separator 分隔符，默认为逗号
  */
 export function getEnvArray(key: string, defaultValue: string[], separator?: string): string[];
-export function getEnvArray(
-  key: string,
-  defaultValue?: undefined,
-  separator?: string,
-): string[] | undefined;
-export function getEnvArray(
-  key: string,
-  defaultValue?: string[],
-  separator = ",",
-): string[] | undefined {
+export function getEnvArray(key: string, defaultValue?: undefined, separator?: string): string[] | undefined;
+export function getEnvArray(key: string, defaultValue?: string[], separator = ","): string[] | undefined {
   const val = process.env[key];
   if (!hasEnvValue(val)) {
     return defaultValue;
@@ -150,20 +140,9 @@ export function getRequiredEnvArray(key: string, separator = ","): string[] {
  * @param defaultValue 默认值（可选）
  * @example const nodeEnv = getEnvUnion('NODE_ENV', ['development', 'production', 'test'] as const, 'development');
  */
-export function getEnvUnion<T extends string>(
-  key: string,
-  allowedValues: readonly T[],
-  defaultValue: T,
-): T;
-export function getEnvUnion<T extends string>(
-  key: string,
-  allowedValues: readonly T[],
-): T | undefined;
-export function getEnvUnion<T extends string>(
-  key: string,
-  allowedValues: readonly T[],
-  defaultValue?: T,
-): T | undefined {
+export function getEnvUnion<T extends string>(key: string, allowedValues: readonly T[], defaultValue: T): T;
+export function getEnvUnion<T extends string>(key: string, allowedValues: readonly T[]): T | undefined;
+export function getEnvUnion<T extends string>(key: string, allowedValues: readonly T[], defaultValue?: T): T | undefined {
   const val = process.env[key] as T | undefined;
   if (!hasEnvValue(val) || !allowedValues.includes(val)) {
     return defaultValue;
@@ -228,11 +207,7 @@ export function getRequiredEnvJson<T = unknown>(key: string): T {
  * @param radix 进制，默认 10 进制
  */
 export function getEnvInt(key: string, defaultValue: number, radix?: number): number;
-export function getEnvInt(
-  key: string,
-  defaultValue?: undefined,
-  radix?: number,
-): number | undefined;
+export function getEnvInt(key: string, defaultValue?: undefined, radix?: number): number | undefined;
 export function getEnvInt(key: string, defaultValue?: number, radix = 10): number | undefined {
   if (!Number.isInteger(radix) || radix < 2 || radix > 36) {
     throw new RangeError("radix 必须是 2 到 36 之间的整数");
@@ -274,11 +249,7 @@ export function getRequiredEnvInt(key: string, radix = 10): number {
   return value;
 }
 
-export const environment = getEnvUnion(
-  "NODE_ENV",
-  ["development", "production", "test"],
-  "development",
-);
+export const environment = getEnvUnion("NODE_ENV", ["development", "production", "test"], "development");
 export const isDevelopment = environment === "development";
 export const isProduction = environment === "production";
 export const isTest = environment === "test";

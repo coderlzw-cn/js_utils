@@ -150,11 +150,7 @@ export const clipboard = {
    * 判断当前环境是否支持 ClipboardItem。
    */
   isClipboardItemSupported(): boolean {
-    return (
-      typeof ClipboardItem !== "undefined" &&
-      typeof navigator !== "undefined" &&
-      typeof navigator.clipboard?.write === "function"
-    );
+    return typeof ClipboardItem !== "undefined" && typeof navigator !== "undefined" && typeof navigator.clipboard?.write === "function";
   },
 
   /**
@@ -212,11 +208,7 @@ export const clipboard = {
     const text = options.text ?? htmlToText(html);
 
     if (!isBrowserRuntime()) {
-      return createFailure(
-        "copy",
-        new Error("Clipboard API is unavailable outside the browser."),
-        text,
-      );
+      return createFailure("copy", new Error("Clipboard API is unavailable outside the browser."), text);
     }
 
     if (typeof html !== "string") {
@@ -262,10 +254,7 @@ export const clipboard = {
    * @param element 要复制的元素
    * @param options 复制配置
    */
-  async copyElement(
-    element: HTMLElement | null | undefined,
-    options: CopyElementOptions = {},
-  ): Promise<ClipboardResult> {
+  async copyElement(element: HTMLElement | null | undefined, options: CopyElementOptions = {}): Promise<ClipboardResult> {
     if (!element) {
       return createFailure("copy", new TypeError("The copied element cannot be null."));
     }
@@ -292,10 +281,7 @@ export const clipboard = {
    * @param element 要执行剪切操作的元素
    * @param options 剪切配置
    */
-  async cut(
-    element: CuttableElement | null | undefined,
-    options: CutOptions = {},
-  ): Promise<ClipboardResult> {
+  async cut(element: CuttableElement | null | undefined, options: CutOptions = {}): Promise<ClipboardResult> {
     const { selectAllWhenEmpty = false, fallback = true } = options;
 
     if (!isBrowserRuntime()) {
@@ -320,10 +306,7 @@ export const clipboard = {
       });
     }
 
-    return createFailure(
-      "cut",
-      new TypeError("Only input, textarea, and contenteditable elements can be cut."),
-    );
+    return createFailure("cut", new TypeError("Only input, textarea, and contenteditable elements can be cut."));
   },
 
   /**
@@ -335,11 +318,7 @@ export const clipboard = {
    * @param clear 复制成功后的清理函数
    * @param options 复制配置
    */
-  async copyAndClear(
-    text: string,
-    clear: () => void | Promise<void>,
-    options: CopyTextOptions = {},
-  ): Promise<ClipboardResult> {
+  async copyAndClear(text: string, clear: () => void | Promise<void>, options: CopyTextOptions = {}): Promise<ClipboardResult> {
     const result = await this.copyText(text, options);
 
     if (!result.success) {
@@ -362,10 +341,7 @@ export const clipboard = {
 /**
  * 剪切 input 或 textarea 中的内容。
  */
-async function cutTextControl(
-  element: HTMLInputElement | HTMLTextAreaElement,
-  options: Required<CutOptions>,
-): Promise<ClipboardResult> {
+async function cutTextControl(element: HTMLInputElement | HTMLTextAreaElement, options: Required<CutOptions>): Promise<ClipboardResult> {
   if (element.disabled || element.readOnly) {
     return createFailure("cut", new Error("The target element is disabled or readonly."));
   }
@@ -417,10 +393,7 @@ async function cutTextControl(
 /**
  * 剪切 contenteditable 元素中的内容。
  */
-async function cutContentEditable(
-  element: HTMLElement,
-  options: Required<CutOptions>,
-): Promise<ClipboardResult> {
+async function cutContentEditable(element: HTMLElement, options: Required<CutOptions>): Promise<ClipboardResult> {
   element.focus();
 
   const selection = window.getSelection();
@@ -431,11 +404,7 @@ async function cutContentEditable(
 
   let range: Range;
 
-  if (
-    selection.rangeCount > 0 &&
-    !selection.isCollapsed &&
-    selectionBelongsToElement(selection, element)
-  ) {
+  if (selection.rangeCount > 0 && !selection.isCollapsed && selectionBelongsToElement(selection, element)) {
     range = selection.getRangeAt(0);
   } else {
     if (!options.selectAllWhenEmpty) {
@@ -602,10 +571,7 @@ function executeTemporaryCopy(element: HTMLTextAreaElement, text: string): Clipb
  * 相比直接赋值，该方式对 React 等受控组件兼容性更好。
  */
 function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const prototype =
-    element instanceof HTMLTextAreaElement
-      ? HTMLTextAreaElement.prototype
-      : HTMLInputElement.prototype;
+  const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
 
   const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
 
@@ -642,9 +608,7 @@ function dispatchInputEvents(element: HTMLElement, inputType: string): void {
 /**
  * 判断元素是否为支持文本选择的输入控件。
  */
-function isTextControl(
-  element: CuttableElement,
-): element is HTMLInputElement | HTMLTextAreaElement {
+function isTextControl(element: CuttableElement): element is HTMLInputElement | HTMLTextAreaElement {
   if (element instanceof HTMLTextAreaElement) {
     return true;
   }
@@ -667,14 +631,7 @@ function selectionBelongsToElement(selection: Selection, element: HTMLElement): 
   const range = selection.getRangeAt(0);
   const commonAncestor = range.commonAncestorContainer;
 
-  return (
-    commonAncestor === element ||
-    element.contains(
-      commonAncestor.nodeType === Node.ELEMENT_NODE
-        ? (commonAncestor as Element)
-        : commonAncestor.parentElement,
-    )
-  );
+  return commonAncestor === element || element.contains(commonAncestor.nodeType === Node.ELEMENT_NODE ? (commonAncestor as Element) : commonAncestor.parentElement);
 }
 
 /**
@@ -710,9 +667,7 @@ function saveSelection(): Range[] {
     return [];
   }
 
-  return Array.from({ length: selection.rangeCount }, (_, index) =>
-    selection.getRangeAt(index).cloneRange(),
-  );
+  return Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index).cloneRange());
 }
 
 /**

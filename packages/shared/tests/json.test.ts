@@ -35,33 +35,27 @@ describe("parseJson", () => {
     expect(() => parseJson('{"trailing":true,}', { format: "json" })).toThrow(SyntaxError);
   });
 
-  it.each(["json", "json5"] satisfies JsonFormat[])(
-    "%s reviver 自底向上转换值并绑定父容器",
-    (format) => {
-      const calls: Array<{ key: string; value: unknown; holder: unknown }> = [];
-      const result = parseJson<{ nested: { count: number }; removed?: boolean }>(
-        '{"nested":{"count":2},"removed":true}',
-        {
-          format,
-          reviver(key, value) {
-            calls.push({ key, value, holder: this });
-            if (key === "count") {
-              return (value as number) * 3;
-            }
-            if (key === "removed") {
-              return undefined;
-            }
-            return value;
-          },
-        },
-      );
+  it.each(["json", "json5"] satisfies JsonFormat[])("%s reviver 自底向上转换值并绑定父容器", (format) => {
+    const calls: Array<{ key: string; value: unknown; holder: unknown }> = [];
+    const result = parseJson<{ nested: { count: number }; removed?: boolean }>('{"nested":{"count":2},"removed":true}', {
+      format,
+      reviver(key, value) {
+        calls.push({ key, value, holder: this });
+        if (key === "count") {
+          return (value as number) * 3;
+        }
+        if (key === "removed") {
+          return undefined;
+        }
+        return value;
+      },
+    });
 
-      expect(result).toEqual({ nested: { count: 6 } });
-      expect(calls.map(({ key }) => key)).toEqual(["count", "nested", "removed", ""]);
-      expect(calls[0]?.holder).toMatchObject({ count: 6 });
-      expect(calls.at(-1)?.holder).toHaveProperty("", result);
-    },
-  );
+    expect(result).toEqual({ nested: { count: 6 } });
+    expect(calls.map(({ key }) => key)).toEqual(["count", "nested", "removed", ""]);
+    expect(calls[0]?.holder).toMatchObject({ count: 6 });
+    expect(calls.at(-1)?.holder).toHaveProperty("", result);
+  });
 
   it("不配置 fieldName 时保留解析器的原始语法错误", () => {
     const captureError = () => {
@@ -137,12 +131,8 @@ describe("parseJson", () => {
       message: "fieldName must be a non-empty string",
     },
   ])("拒绝$name", ({ text, options, error, message }) => {
-    expect(() => parseJson(text as string, options as unknown as ParseJsonOptions)).toThrowError(
-      error,
-    );
-    expect(() => parseJson(text as string, options as unknown as ParseJsonOptions)).toThrow(
-      message,
-    );
+    expect(() => parseJson(text as string, options as unknown as ParseJsonOptions)).toThrowError(error);
+    expect(() => parseJson(text as string, options as unknown as ParseJsonOptions)).toThrow(message);
   });
 });
 
@@ -168,9 +158,7 @@ describe("parseJsonObject", () => {
   });
 
   it("对象类型错误包含 fieldName", () => {
-    expect(() => parseJsonObject("[]", { fieldName: "payload" })).toThrowError(
-      new TypeError("payload 必须是 JSON 对象"),
-    );
+    expect(() => parseJsonObject("[]", { fieldName: "payload" })).toThrowError(new TypeError("payload 必须是 JSON 对象"));
   });
 
   it("把已检查对象和字段名传给 deserialize 并返回转换结果", () => {
@@ -326,34 +314,31 @@ describe("stringifyJson", () => {
     });
   });
 
-  it.each(["json", "json5"] satisfies JsonFormat[])(
-    "%s 支持函数 replacer 的 this、转换和删除语义",
-    (format) => {
-      const holders: unknown[] = [];
-      const text = stringifyJson(
-        { count: 2, omitted: true, items: [1, 2] },
-        {
-          format,
-          replacer(key, value) {
-            holders.push(this);
-            if (key === "count") {
-              return (value as number) * 2;
-            }
-            if (key === "omitted" || key === "0") {
-              return undefined;
-            }
-            return value;
-          },
+  it.each(["json", "json5"] satisfies JsonFormat[])("%s 支持函数 replacer 的 this、转换和删除语义", (format) => {
+    const holders: unknown[] = [];
+    const text = stringifyJson(
+      { count: 2, omitted: true, items: [1, 2] },
+      {
+        format,
+        replacer(key, value) {
+          holders.push(this);
+          if (key === "count") {
+            return (value as number) * 2;
+          }
+          if (key === "omitted" || key === "0") {
+            return undefined;
+          }
+          return value;
         },
-      );
+      },
+    );
 
-      expect(parseJson(text!, { format })).toEqual({
-        count: 4,
-        items: [null, 2],
-      });
-      expect(holders[0]).toHaveProperty("", expect.any(Object));
-    },
-  );
+    expect(parseJson(text!, { format })).toEqual({
+      count: 4,
+      items: [null, 2],
+    });
+    expect(holders[0]).toHaveProperty("", expect.any(Object));
+  });
 
   it.each(["json", "json5"] satisfies JsonFormat[])("%s 支持字符串和数字属性白名单", (format) => {
     const whitelist: Array<string | number> = ["keep", 1];
@@ -426,9 +411,7 @@ describe("stringifyJson", () => {
 
   it("排序时正确处理共享引用，并仍拒绝循环引用", () => {
     const shared = { b: 2, a: 1 };
-    expect(stringifyJson({ second: shared, first: shared }, { sortKeys: true })).toBe(
-      '{"first":{"a":1,"b":2},"second":{"a":1,"b":2}}',
-    );
+    expect(stringifyJson({ second: shared, first: shared }, { sortKeys: true })).toBe('{"first":{"a":1,"b":2},"second":{"a":1,"b":2}}');
 
     const circular: Record<string, unknown> = {};
     circular.self = circular;

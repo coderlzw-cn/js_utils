@@ -91,10 +91,7 @@ export function safeEqual(first: string, second: string): boolean {
  * 长度按用户可感知字符计算，不会把一个 emoji 或组合音标拆成多个字符。配置非法时
  * 抛出 `RangeError`，字段值不符合规则时返回 `false`。
  */
-export function isValidString(
-  value: unknown,
-  options: StringValidationOptions = {},
-): value is string {
+export function isValidString(value: unknown, options: StringValidationOptions = {}): value is string {
   const resolvedOptions = resolveStringValidationOptions(options);
   return typeof value === "string" && matchesStringValidation(value, resolvedOptions);
 }
@@ -107,11 +104,7 @@ export function isValidString(
  * @example
  * assertString(payload.username, { nonBlank: true, maximumLength: 32 }, "username");
  */
-export function assertString(
-  value: unknown,
-  options: StringValidationOptions = {},
-  fieldName = "value",
-): asserts value is string {
+export function assertString(value: unknown, options: StringValidationOptions = {}, fieldName = "value"): asserts value is string {
   const resolvedOptions = resolveStringValidationOptions(options);
 
   if (typeof value !== "string") {
@@ -126,10 +119,7 @@ export function assertString(
 /**
  * 合并重复空白。保留换行时，会同时规范 CRLF 和每行两侧的水平空白。
  */
-export function normalizeWhitespace(
-  value: string,
-  options: NormalizeWhitespaceOptions = {},
-): string {
+export function normalizeWhitespace(value: string, options: NormalizeWhitespaceOptions = {}): string {
   const { preserveNewlines = false, trim = true } = options;
 
   if (!preserveNewlines) {
@@ -291,27 +281,14 @@ interface ResolvedStringValidationOptions {
   readonly trim: boolean;
 }
 
-function resolveStringValidationOptions(
-  options: StringValidationOptions,
-): ResolvedStringValidationOptions {
-  const {
-    nonBlank = false,
-    minimumLength = 0,
-    maximumLength = Infinity,
-    pattern,
-    trim = false,
-  } = options;
+function resolveStringValidationOptions(options: StringValidationOptions): ResolvedStringValidationOptions {
+  const { nonBlank = false, minimumLength = 0, maximumLength = Infinity, pattern, trim = false } = options;
 
   if (!Number.isSafeInteger(minimumLength) || minimumLength < 0) {
     throw new RangeError("minimumLength must be a non-negative safe integer");
   }
-  if (
-    maximumLength !== Infinity &&
-    (!Number.isSafeInteger(maximumLength) || maximumLength < minimumLength)
-  ) {
-    throw new RangeError(
-      "maximumLength must be Infinity or a safe integer greater than or equal to minimumLength",
-    );
+  if (maximumLength !== Infinity && (!Number.isSafeInteger(maximumLength) || maximumLength < minimumLength)) {
+    throw new RangeError("maximumLength must be Infinity or a safe integer greater than or equal to minimumLength");
   }
 
   return { nonBlank, minimumLength, maximumLength, pattern, trim };
@@ -329,15 +306,10 @@ function matchesStringValidation(value: string, options: ResolvedStringValidatio
   }
 
   // 使用新的 RegExp 实例，避免全局或 sticky 表达式的 lastIndex 污染重复校验结果。
-  return options.pattern === undefined
-    ? true
-    : new RegExp(options.pattern.source, options.pattern.flags).test(normalized);
+  return options.pattern === undefined ? true : new RegExp(options.pattern.source, options.pattern.flags).test(normalized);
 }
 
-function describeStringRequirement(
-  fieldName: string,
-  options: ResolvedStringValidationOptions,
-): string {
+function describeStringRequirement(fieldName: string, options: ResolvedStringValidationOptions): string {
   const requirements: string[] = [];
   if (options.nonBlank) {
     requirements.push("non-blank");

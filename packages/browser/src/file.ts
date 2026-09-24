@@ -75,9 +75,7 @@ export interface FileValidationError {
 }
 
 /** 文件校验结果。 */
-export type FileValidationResult =
-  | { readonly valid: true; readonly errors: readonly [] }
-  | { readonly valid: false; readonly errors: readonly FileValidationError[] };
+export type FileValidationResult = { readonly valid: true; readonly errors: readonly [] } | { readonly valid: false; readonly errors: readonly FileValidationError[] };
 
 /** 对象 URL 句柄。 */
 export interface ObjectUrlHandle {
@@ -317,10 +315,7 @@ export function readBlobAsText(blob: Blob, options: TextFileReadOptions = {}): P
 }
 
 /** 使用 FileReader 将 Blob 读取为 ArrayBuffer，并支持进度和主动取消。 */
-export function readBlobAsArrayBuffer(
-  blob: Blob,
-  options: FileReadOptions = {},
-): Promise<ArrayBuffer> {
+export function readBlobAsArrayBuffer(blob: Blob, options: FileReadOptions = {}): Promise<ArrayBuffer> {
   return readBlob(blob, "array-buffer", options);
 }
 
@@ -371,11 +366,7 @@ export function createObjectUrl(blob: Blob): ObjectUrlHandle {
  *
  * 对象 URL 默认延迟回收，避免部分浏览器在 click 后立即 revoke 导致下载失败。
  */
-export function downloadBlob(
-  blob: Blob,
-  fileName: string,
-  options: DownloadFileOptions = {},
-): EventCleanup {
+export function downloadBlob(blob: Blob, fileName: string, options: DownloadFileOptions = {}): EventCleanup {
   const { revokeDelay = 1000, signal } = options;
   validateNonNegativeFiniteNumber(revokeDelay, "revokeDelay");
 
@@ -423,11 +414,7 @@ export function downloadBlob(
 }
 
 /** 下载纯文本文件。 */
-export function downloadText(
-  text: string,
-  fileName: string,
-  options: DownloadFileOptions = {},
-): EventCleanup {
+export function downloadText(text: string, fileName: string, options: DownloadFileOptions = {}): EventCleanup {
   return downloadBlob(new Blob([text], { type: "text/plain;charset=utf-8" }), fileName, options);
 }
 
@@ -436,11 +423,7 @@ export function downloadText(
  *
  * JSON.stringify 无法处理循环引用和 BigInt，此类错误会原样抛出。
  */
-export function downloadJson(
-  value: unknown,
-  fileName: string,
-  options: DownloadFileOptions & { readonly space?: number | string } = {},
-): EventCleanup {
+export function downloadJson(value: unknown, fileName: string, options: DownloadFileOptions & { readonly space?: number | string } = {}): EventCleanup {
   const { space, ...downloadOptions } = options;
   const json = JSON.stringify(value, undefined, space);
 
@@ -448,11 +431,7 @@ export function downloadJson(
     throw new TypeError("value cannot be represented as JSON");
   }
 
-  return downloadBlob(
-    new Blob([json], { type: "application/json;charset=utf-8" }),
-    fileName,
-    downloadOptions,
-  );
+  return downloadBlob(new Blob([json], { type: "application/json;charset=utf-8" }), fileName, downloadOptions);
 }
 
 /**
@@ -460,10 +439,7 @@ export function downloadJson(
  *
  * 使用生成器避免一次创建大量分片；适合分片上传，但不会复制底层二进制数据。
  */
-export function* iterateBlobChunks(
-  blob: Blob,
-  chunkSize: number,
-): Generator<Blob, void, undefined> {
+export function* iterateBlobChunks(blob: Blob, chunkSize: number): Generator<Blob, void, undefined> {
   if (!Number.isSafeInteger(chunkSize) || chunkSize <= 0) {
     throw new RangeError("chunkSize must be a positive safe integer");
   }
@@ -493,10 +469,7 @@ export async function hashBlob(blob: Blob, options: HashBlobOptions = {}): Promi
   const browserWindow = getBrowserWindow();
 
   if (!browserWindow.crypto?.subtle) {
-    throw new DOMException(
-      "Web Crypto digest is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("Web Crypto digest is not supported in the current browser.", "NotSupportedError");
   }
 
   const buffer = await readBlobAsArrayBuffer(blob, {
@@ -554,20 +527,10 @@ export function getFileExtension(fileName: string): string | undefined {
 type FileReadMode = "text" | "array-buffer" | "data-url";
 
 /** 使用 FileReader 统一实现读取、进度、错误和 AbortSignal 清理。 */
-function readBlob(
-  blob: Blob,
-  mode: "text",
-  options: TextFileReadOptions,
-  encoding?: string,
-): Promise<string>;
+function readBlob(blob: Blob, mode: "text", options: TextFileReadOptions, encoding?: string): Promise<string>;
 function readBlob(blob: Blob, mode: "array-buffer", options: FileReadOptions): Promise<ArrayBuffer>;
 function readBlob(blob: Blob, mode: "data-url", options: FileReadOptions): Promise<string>;
-function readBlob(
-  blob: Blob,
-  mode: FileReadMode,
-  options: FileReadOptions,
-  encoding?: string,
-): Promise<string | ArrayBuffer> {
+function readBlob(blob: Blob, mode: FileReadMode, options: FileReadOptions, encoding?: string): Promise<string | ArrayBuffer> {
   const { onProgress, signal } = options;
   getBrowserWindow();
 
@@ -605,9 +568,7 @@ function readBlob(
       const result = reader.result;
 
       if (typeof result !== "string" && !(result instanceof ArrayBuffer)) {
-        rejectOnce(
-          new DOMException("FileReader returned an unexpected result.", "InvalidStateError"),
-        );
+        rejectOnce(new DOMException("FileReader returned an unexpected result.", "InvalidStateError"));
         return;
       }
 
@@ -627,9 +588,7 @@ function readBlob(
     const handleProgress = (event: ProgressEvent<FileReader>): void => {
       onProgress?.({
         loaded: event.loaded,
-        ...(event.lengthComputable
-          ? { total: event.total, ratio: event.total === 0 ? 1 : event.loaded / event.total }
-          : {}),
+        ...(event.lengthComputable ? { total: event.total, ratio: event.total === 0 ? 1 : event.loaded / event.total } : {}),
       });
     };
 

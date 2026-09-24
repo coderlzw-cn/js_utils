@@ -128,11 +128,7 @@ export function isIntersectionObserverSupported(): boolean {
  * 未显式启用 attributes/characterData/childList 时，默认观察整个子树的
  * childList 变化。这一默认值可以避免原生 API 因空配置抛出异常。
  */
-export function observeMutations(
-  target: Node,
-  listener: MutationCallback,
-  options: ObserveMutationsOptions = {},
-): EventCleanup {
+export function observeMutations(target: Node, listener: MutationCallback, options: ObserveMutationsOptions = {}): EventCleanup {
   getBrowserWindow();
   ensureObserverSupported(isMutationObserverSupported(), "MutationObserver");
 
@@ -142,13 +138,8 @@ export function observeMutations(
     return () => undefined;
   }
 
-  const hasExplicitType =
-    observerOptions.attributes === true ||
-    observerOptions.characterData === true ||
-    observerOptions.childList === true;
-  const resolvedOptions: MutationObserverInit = hasExplicitType
-    ? observerOptions
-    : { ...observerOptions, childList: true, subtree: true };
+  const hasExplicitType = observerOptions.attributes === true || observerOptions.characterData === true || observerOptions.childList === true;
+  const resolvedOptions: MutationObserverInit = hasExplicitType ? observerOptions : { ...observerOptions, childList: true, subtree: true };
   let active = true;
   const observer = new MutationObserver((records, currentObserver) => {
     if (active && records.length > 0) {
@@ -177,11 +168,7 @@ export function observeMutations(
 }
 
 /** 批量观察一个或多个元素的尺寸变化。 */
-export function observeResize(
-  targets: Element | Iterable<Element>,
-  listener: ResizeObserverCallback,
-  options: ObserveResizeOptions = {},
-): EventCleanup {
+export function observeResize(targets: Element | Iterable<Element>, listener: ResizeObserverCallback, options: ObserveResizeOptions = {}): EventCleanup {
   getBrowserWindow();
   ensureObserverSupported(isResizeObserverSupported(), "ResizeObserver");
 
@@ -217,11 +204,7 @@ export function observeResize(
 }
 
 /** 批量观察一个或多个元素与视口/根元素的交叉变化。 */
-export function observeIntersections(
-  targets: Element | Iterable<Element>,
-  listener: IntersectionObserverCallback,
-  options: ObserveIntersectionsOptions = {},
-): EventCleanup {
+export function observeIntersections(targets: Element | Iterable<Element>, listener: IntersectionObserverCallback, options: ObserveIntersectionsOptions = {}): EventCleanup {
   getBrowserWindow();
   ensureObserverSupported(isIntersectionObserverSupported(), "IntersectionObserver");
 
@@ -270,10 +253,7 @@ export function observeIntersections(
 export function observeSelector<T extends Element = Element>(
   root: ObservationRoot,
   selector: string,
-  listener: (
-    change: SelectorObservation<T>,
-    records: readonly MutationRecord[] | undefined,
-  ) => void,
+  listener: (change: SelectorObservation<T>, records: readonly MutationRecord[] | undefined) => void,
   options: ObserveSelectorOptions = {},
 ): EventCleanup {
   const { attributeFilter, emitInitial = true, observeAttributes = true, signal } = options;
@@ -329,10 +309,7 @@ export function observeSelector<T extends Element = Element>(
  *
  * 函数会先同步查询已有 DOM，只在未命中时创建 MutationObserver。
  */
-export function waitForElement<T extends Element = Element>(
-  selector: string,
-  options: WaitForElementOptions<T> = {},
-): Promise<T> {
+export function waitForElement<T extends Element = Element>(selector: string, options: WaitForElementOptions<T> = {}): Promise<T> {
   const browserWindow = getBrowserWindow();
   const { predicate, root = browserWindow.document, signal, timeout } = options;
   const timeoutError = validateTimeout(timeout, `Waiting for element "${selector}"`);
@@ -399,10 +376,7 @@ export function waitForElement<T extends Element = Element>(
 }
 
 /** 等待指定元素从根节点中移除。元素已不在范围内时立即完成。 */
-export function waitForElementRemoval(
-  element: Element,
-  options: WaitForElementRemovalOptions = {},
-): Promise<void> {
+export function waitForElementRemoval(element: Element, options: WaitForElementRemovalOptions = {}): Promise<void> {
   const { root = element.ownerDocument, signal, timeout } = options;
   const timeoutError = validateTimeout(timeout, "Waiting for element removal");
 
@@ -461,10 +435,7 @@ export function waitForElementRemoval(
  * 适用于动画完成后截图、虚拟列表测量、图表初始化等需要等待
  * 布局稳定的场景。
  */
-export function waitForStableSize(
-  element: Element,
-  options: WaitForStableSizeOptions = {},
-): Promise<ElementSizeSnapshot> {
+export function waitForStableSize(element: Element, options: WaitForStableSizeOptions = {}): Promise<ElementSizeSnapshot> {
   const { box, signal, stableFor = 100, timeout } = options;
   const stableForError = validateDuration(stableFor, "stableFor");
   const timeoutError = validateTimeout(timeout, "Waiting for stable element size");
@@ -565,11 +536,7 @@ function queryElements<T extends Element>(root: ObservationRoot, selector: strin
 }
 
 /** 查找第一个通过可选断言的匹配元素。 */
-function findMatchingElement<T extends Element>(
-  root: ObservationRoot,
-  selector: string,
-  predicate: ((element: T) => boolean) | undefined,
-): T | undefined {
+function findMatchingElement<T extends Element>(root: ObservationRoot, selector: string, predicate: ((element: T) => boolean) | undefined): T | undefined {
   for (const element of root.querySelectorAll<T>(selector)) {
     if (!predicate || predicate(element)) {
       return element;

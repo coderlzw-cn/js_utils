@@ -152,8 +152,7 @@ export interface VirtualKeyboardOptions {
 }
 
 /** 虚拟键盘监听配置。 */
-export interface ObserveVirtualKeyboardOptions
-  extends VirtualKeyboardOptions, ObserveViewportOptions {}
+export interface ObserveVirtualKeyboardOptions extends VirtualKeyboardOptions, ObserveViewportOptions {}
 
 /** 页面滚动锁定配置。 */
 export interface LockPageScrollOptions {
@@ -206,16 +205,8 @@ export function getViewportSnapshot(): ViewportSnapshot {
   return {
     width,
     height,
-    documentWidth: Math.max(
-      documentElement.scrollWidth,
-      documentElement.offsetWidth,
-      body?.scrollWidth ?? 0,
-    ),
-    documentHeight: Math.max(
-      documentElement.scrollHeight,
-      documentElement.offsetHeight,
-      body?.scrollHeight ?? 0,
-    ),
+    documentWidth: Math.max(documentElement.scrollWidth, documentElement.offsetWidth, body?.scrollWidth ?? 0),
+    documentHeight: Math.max(documentElement.scrollHeight, documentElement.offsetHeight, body?.scrollHeight ?? 0),
     scrollX: browserWindow.scrollX,
     scrollY: browserWindow.scrollY,
     pixelRatio: browserWindow.devicePixelRatio,
@@ -242,10 +233,7 @@ export function getViewportSnapshot(): ViewportSnapshot {
  * 同一帧内的 resize/scroll 事件会合并为一次回调，避免移动端
  * 键盘弹出和页面缩放时触发大量重复布局计算。
  */
-export function observeViewport(
-  listener: ViewportListener,
-  options: ObserveViewportOptions = {},
-): EventCleanup {
+export function observeViewport(listener: ViewportListener, options: ObserveViewportOptions = {}): EventCleanup {
   const { emitInitial = true, observeScroll = true, signal } = options;
   const browserWindow = getBrowserWindow();
 
@@ -319,11 +307,7 @@ export function matchesMediaQuery(query: string): boolean {
 }
 
 /** 监听 CSS 媒体查询，并兼容仅支持 addListener 的旧版 Safari。 */
-export function observeMediaQuery(
-  query: string,
-  listener: (state: MediaQueryState, event: MediaQueryListEvent | undefined) => void,
-  options: ObserveMediaQueryOptions = {},
-): EventCleanup {
+export function observeMediaQuery(query: string, listener: (state: MediaQueryState, event: MediaQueryListEvent | undefined) => void, options: ObserveMediaQueryOptions = {}): EventCleanup {
   const { emitInitial = true, signal } = options;
   const mediaQuery = getBrowserWindow().matchMedia(query);
 
@@ -371,10 +355,7 @@ export function observeMediaQuery(
 }
 
 /** 根据最小宽度断点表计算当前激活断点。 */
-export function getViewportBreakpoint<Name extends string>(
-  breakpoints: ViewportBreakpoints<Name>,
-  width = getViewportSnapshot().width,
-): ViewportBreakpointState<Name> {
+export function getViewportBreakpoint<Name extends string>(breakpoints: ViewportBreakpoints<Name>, width = getViewportSnapshot().width): ViewportBreakpointState<Name> {
   if (!Number.isFinite(width) || width < 0) {
     throw new RangeError("Viewport width must be a non-negative finite number.");
   }
@@ -386,10 +367,7 @@ export function getViewportBreakpoint<Name extends string>(
     if (!Number.isFinite(minimumWidth) || minimumWidth < 0) {
       throw new RangeError(`Breakpoint "${name}" must be a non-negative finite number.`);
     }
-    if (
-      minimumWidth <= width &&
-      (activeMinimumWidth === null || minimumWidth > activeMinimumWidth)
-    ) {
+    if (minimumWidth <= width && (activeMinimumWidth === null || minimumWidth > activeMinimumWidth)) {
       activeName = name as Name;
       activeMinimumWidth = minimumWidth;
     }
@@ -424,16 +402,11 @@ export function isIntersectionObserverSupported(): boolean {
 }
 
 /** 同步计算元素相对视口或指定根元素的可见性。 */
-export function getElementViewportState(
-  element: Element,
-  options: ElementViewportOptions = {},
-): ElementViewportState {
+export function getElementViewportState(element: Element, options: ElementViewportOptions = {}): ElementViewportState {
   const threshold = validateRatio(options.threshold ?? 0);
   const elementRect = toViewportRect(element.getBoundingClientRect());
   const viewport = getViewportSnapshot();
-  const rootRect = options.root
-    ? toViewportRect(options.root.getBoundingClientRect())
-    : createViewportRect(0, viewport.width, viewport.height, 0);
+  const rootRect = options.root ? toViewportRect(options.root.getBoundingClientRect()) : createViewportRect(0, viewport.width, viewport.height, 0);
   const intersectionRect = intersectViewportRects(elementRect, rootRect);
   const elementArea = elementRect.width * elementRect.height;
   const intersectionArea = intersectionRect.width * intersectionRect.height;
@@ -454,11 +427,7 @@ export function getElementViewportState(
  *
  * 浏览器会异步派发初始状态；返回的清理函数可重复调用。
  */
-export function observeElementViewport(
-  element: Element,
-  listener: (state: ElementViewportState, entry: IntersectionObserverEntry) => void,
-  options: ObserveElementViewportOptions = {},
-): EventCleanup {
+export function observeElementViewport(element: Element, listener: (state: ElementViewportState, entry: IntersectionObserverEntry) => void, options: ObserveElementViewportOptions = {}): EventCleanup {
   const { root = null, rootMargin, signal } = options;
   const threshold = validateRatio(options.threshold ?? 0);
 
@@ -466,10 +435,7 @@ export function observeElementViewport(
     return () => undefined;
   }
   if (!isIntersectionObserverSupported()) {
-    throw new DOMException(
-      "IntersectionObserver is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("IntersectionObserver is not supported in the current browser.", "NotSupportedError");
   }
 
   let active = true;
@@ -482,12 +448,7 @@ export function observeElementViewport(
 
       const boundingRect = toViewportRect(entry.boundingClientRect);
       const intersectionRect = toViewportRect(entry.intersectionRect);
-      const fallbackRootRect = createViewportRect(
-        0,
-        getViewportSnapshot().width,
-        getViewportSnapshot().height,
-        0,
-      );
+      const fallbackRootRect = createViewportRect(0, getViewportSnapshot().width, getViewportSnapshot().height, 0);
       const rootRect = entry.rootBounds ? toViewportRect(entry.rootBounds) : fallbackRootRect;
 
       listener(
@@ -550,9 +511,7 @@ export function getSafeAreaInsets(): SafeAreaInsets {
  *
  * 这是面向布局的启发式检测，不应用于鉴权或用户行为判定。
  */
-export function getVirtualKeyboardState(
-  options: VirtualKeyboardOptions = {},
-): VirtualKeyboardState {
+export function getVirtualKeyboardState(options: VirtualKeyboardOptions = {}): VirtualKeyboardState {
   const minimumHeight = validateNonNegativeNumber(options.minimumHeight ?? 150, "minimumHeight");
   const snapshot = getViewportSnapshot();
   const visualViewport = snapshot.visualViewport;
@@ -566,10 +525,7 @@ export function getVirtualKeyboardState(
 }
 
 /** 监听估算的虚拟键盘状态，仅在可见性或高度变化时通知。 */
-export function observeVirtualKeyboard(
-  listener: (state: VirtualKeyboardState, event: Event | undefined) => void,
-  options: ObserveVirtualKeyboardOptions = {},
-): EventCleanup {
+export function observeVirtualKeyboard(listener: (state: VirtualKeyboardState, event: Event | undefined) => void, options: ObserveVirtualKeyboardOptions = {}): EventCleanup {
   let previous: VirtualKeyboardState | undefined;
 
   return observeViewport((_snapshot, event) => {
@@ -596,10 +552,7 @@ export function lockPageScroll(options: LockPageScrollOptions = {}): EventCleanu
     return () => undefined;
   }
   if (!documentValue.body) {
-    throw new DOMException(
-      "Page scroll cannot be locked before document.body exists.",
-      "InvalidStateError",
-    );
+    throw new DOMException("Page scroll cannot be locked before document.body exists.", "InvalidStateError");
   }
 
   if (pageScrollLockState) {
@@ -669,15 +622,9 @@ export function lockPageScroll(options: LockPageScrollOptions = {}): EventCleanu
  * 写入 width/height/visual-width/visual-height/offset-x/offset-y/scale/pixel-ratio；
  * 清理时会恢复目标元素上原有的内联变量值。
  */
-export function bindViewportCssVariables(
-  options: BindViewportCssVariablesOptions = {},
-): EventCleanup {
+export function bindViewportCssVariables(options: BindViewportCssVariablesOptions = {}): EventCleanup {
   const browserWindow = getBrowserWindow();
-  const {
-    prefix = "--viewport",
-    signal,
-    target = browserWindow.document.documentElement,
-  } = options;
+  const { prefix = "--viewport", signal, target = browserWindow.document.documentElement } = options;
 
   if (signal?.aborted) {
     return () => undefined;
@@ -686,16 +633,7 @@ export function bindViewportCssVariables(
     throw new TypeError("Viewport CSS variable prefix must start with '--' and include a name.");
   }
 
-  const names = [
-    "width",
-    "height",
-    "visual-width",
-    "visual-height",
-    "offset-x",
-    "offset-y",
-    "scale",
-    "pixel-ratio",
-  ];
+  const names = ["width", "height", "visual-width", "visual-height", "offset-x", "offset-y", "scale", "pixel-ratio"];
   const savedStyles = names.map((name) => saveInlineStyle(target, `${prefix}-${name}`));
   let active = true;
   const stopObserving = observeViewport(
@@ -842,10 +780,7 @@ export function getFullscreenState(): FullscreenState {
  * 同步调用。若等待期间 signal 被取消，迟到进入的目标元素会被安全退出，防止
  * 调用方已销毁后页面仍停留在全屏状态。
  */
-export async function requestFullscreen(
-  element?: Element,
-  options: RequestFullscreenOptions = {},
-): Promise<FullscreenState> {
+export async function requestFullscreen(element?: Element, options: RequestFullscreenOptions = {}): Promise<FullscreenState> {
   const browserWindow = getBrowserWindow();
   const target = element ?? browserWindow.document.documentElement;
   const { signal, ...fullscreenOptions } = options;
@@ -857,10 +792,7 @@ export async function requestFullscreen(
   const request = getFullscreenRequestInvoker(target);
 
   if (!request || !isFullscreenSupported()) {
-    throw new DOMException(
-      "Fullscreen API is not available for the current document.",
-      "NotSupportedError",
-    );
+    throw new DOMException("Fullscreen API is not available for the current document.", "NotSupportedError");
   }
 
   let operation: Promise<void> | void;
@@ -892,15 +824,10 @@ export async function exitFullscreen(): Promise<FullscreenState> {
   }
 
   const documentValue = getBrowserWindow().document as WebkitFullscreenDocument;
-  const exit =
-    documentValue.exitFullscreen?.bind(documentValue) ??
-    documentValue.webkitExitFullscreen?.bind(documentValue);
+  const exit = documentValue.exitFullscreen?.bind(documentValue) ?? documentValue.webkitExitFullscreen?.bind(documentValue);
 
   if (!exit) {
-    throw new DOMException(
-      "Fullscreen exit is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("Fullscreen exit is not supported in the current browser.", "NotSupportedError");
   }
 
   try {
@@ -913,10 +840,7 @@ export async function exitFullscreen(): Promise<FullscreenState> {
 }
 
 /** 当前处于全屏时退出，否则让指定元素进入全屏。 */
-export function toggleFullscreen(
-  element?: Element,
-  options: RequestFullscreenOptions = {},
-): Promise<FullscreenState> {
+export function toggleFullscreen(element?: Element, options: RequestFullscreenOptions = {}): Promise<FullscreenState> {
   return isFullscreen() ? exitFullscreen() : requestFullscreen(element, options);
 }
 
@@ -926,10 +850,7 @@ export function toggleFullscreen(
  * 同时注册两组事件以兼容 Safari，并通过元素状态去重，避免浏览器同时派发标准
  * 与前缀事件时重复通知。初次回调失败会立即清理全部监听器。
  */
-export function observeFullscreen(
-  listener: FullscreenListener,
-  options: ObserveFullscreenOptions = {},
-): EventCleanup {
+export function observeFullscreen(listener: FullscreenListener, options: ObserveFullscreenOptions = {}): EventCleanup {
   const { emitInitial = true, onError, signal } = options;
   const documentValue = getBrowserWindow().document;
 
@@ -981,10 +902,7 @@ export function observeFullscreen(
  */
 export function isVideoFullscreenSupported(video: HTMLVideoElement): boolean {
   const webkitVideo = video as WebkitFullscreenVideoElement;
-  return (
-    getFullscreenRequestInvoker(video) !== undefined ||
-    typeof webkitVideo.webkitEnterFullscreen === "function"
-  );
+  return getFullscreenRequestInvoker(video) !== undefined || typeof webkitVideo.webkitEnterFullscreen === "function";
 }
 
 /** 判断指定视频是否正在标准全屏或 iOS Safari 原生视频全屏中。 */
@@ -998,10 +916,7 @@ export function isVideoFullscreen(video: HTMLVideoElement): boolean {
  *
  * 与普通全屏一样，应在用户手势处理器中同步调用。
  */
-export async function requestVideoFullscreen(
-  video: HTMLVideoElement,
-  options: RequestFullscreenOptions = {},
-): Promise<void> {
+export async function requestVideoFullscreen(video: HTMLVideoElement, options: RequestFullscreenOptions = {}): Promise<void> {
   if (getFullscreenRequestInvoker(video) && isFullscreenSupported()) {
     await requestFullscreen(video, options);
     return;
@@ -1014,10 +929,7 @@ export async function requestVideoFullscreen(
   const webkitVideo = video as WebkitFullscreenVideoElement;
 
   if (typeof webkitVideo.webkitEnterFullscreen !== "function") {
-    throw new DOMException(
-      "Video fullscreen is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("Video fullscreen is not supported in the current browser.", "NotSupportedError");
   }
 
   try {
@@ -1036,18 +948,13 @@ export async function exitVideoFullscreen(video: HTMLVideoElement): Promise<void
 
   const webkitVideo = video as WebkitFullscreenVideoElement;
 
-  if (
-    webkitVideo.webkitDisplayingFullscreen &&
-    typeof webkitVideo.webkitExitFullscreen === "function"
-  ) {
+  if (webkitVideo.webkitDisplayingFullscreen && typeof webkitVideo.webkitExitFullscreen === "function") {
     webkitVideo.webkitExitFullscreen();
   }
 }
 
 /** 将 DOMRect 复制为不会随浏览器布局变化的普通对象。 */
-function toViewportRect(
-  rect: Pick<DOMRectReadOnly, "top" | "right" | "bottom" | "left" | "width" | "height">,
-): ViewportRect {
+function toViewportRect(rect: Pick<DOMRectReadOnly, "top" | "right" | "bottom" | "left" | "width" | "height">): ViewportRect {
   return {
     top: rect.top,
     right: rect.right,
@@ -1059,12 +966,7 @@ function toViewportRect(
 }
 
 /** 通过边界坐标创建标准化矩形。 */
-function createViewportRect(
-  top: number,
-  right: number,
-  bottom: number,
-  left: number,
-): ViewportRect {
+function createViewportRect(top: number, right: number, bottom: number, left: number): ViewportRect {
   return {
     top,
     right,
@@ -1154,11 +1056,7 @@ function getFullscreenRequestInvoker(element: Element): FullscreenRequestInvoker
  *
  * 仅当迟到的全屏元素仍是本次目标时才退出，避免误退出其他模块随后发起的全屏。
  */
-function waitForFullscreenOperation(
-  operation: Promise<void> | void,
-  signal: AbortSignal | undefined,
-  target: Element,
-): Promise<void> {
+function waitForFullscreenOperation(operation: Promise<void> | void, signal: AbortSignal | undefined, target: Element): Promise<void> {
   if (!signal) {
     return Promise.resolve(operation);
   }

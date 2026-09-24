@@ -135,10 +135,7 @@ export function isFiniteNumber(value: unknown): value is number {
  * @example
  * isValidNumber(18, { minimum: 0, integer: true }); // true
  */
-export function isValidNumber(
-  value: unknown,
-  options: NumberValidationOptions = {},
-): value is number {
+export function isValidNumber(value: unknown, options: NumberValidationOptions = {}): value is number {
   const resolvedOptions = resolveNumberValidationOptions(options);
   return isFiniteNumber(value) && matchesNumberValidation(value, resolvedOptions);
 }
@@ -152,11 +149,7 @@ export function isValidNumber(
  * @example
  * assertNumber(payload.page, { minimum: 1, safeInteger: true }, "page");
  */
-export function assertNumber(
-  value: unknown,
-  options: NumberValidationOptions = {},
-  fieldName = "value",
-): asserts value is number {
+export function assertNumber(value: unknown, options: NumberValidationOptions = {}, fieldName = "value"): asserts value is number {
   const resolvedOptions = resolveNumberValidationOptions(options);
 
   if (!isFiniteNumber(value)) {
@@ -176,11 +169,7 @@ export function assertNumber(
  */
 export function isNumericString(value: string): boolean {
   const normalized = value.trim();
-  return (
-    normalized.length > 0 &&
-    DECIMAL_NUMBER_PATTERN.test(normalized) &&
-    Number.isFinite(Number(normalized))
-  );
+  return normalized.length > 0 && DECIMAL_NUMBER_PATTERN.test(normalized) && Number.isFinite(Number(normalized));
 }
 
 /**
@@ -254,11 +243,7 @@ export function toNumber(value: unknown, options: ToNumberOptions = {}): number 
  *
  * @throws {RangeError} radix 不在 2 到 36 之间，或 maxDigits 不是正安全整数。
  */
-export function isValidBaseInteger(
-  value: string,
-  radix: number,
-  options: BaseIntegerParseOptions = {},
-): boolean {
+export function isValidBaseInteger(value: string, radix: number, options: BaseIntegerParseOptions = {}): boolean {
   assertRadix(radix);
   const resolvedOptions = resolveBaseParseOptions(options);
   return normalizeBaseInteger(value, radix, resolvedOptions) !== undefined;
@@ -276,11 +261,7 @@ export function isValidBaseInteger(
  * @throws {RangeError} radix 或 maxDigits 配置非法。
  * @throws {SyntaxError} 输入为空、包含当前进制不支持的字符、前缀不匹配或超过长度限制。
  */
-export function parseBaseInteger(
-  value: string,
-  radix: number,
-  options: BaseIntegerParseOptions = {},
-): bigint {
+export function parseBaseInteger(value: string, radix: number, options: BaseIntegerParseOptions = {}): bigint {
   assertRadix(radix);
   const resolvedOptions = resolveBaseParseOptions(options);
   const normalized = normalizeBaseInteger(value, radix, resolvedOptions);
@@ -309,11 +290,7 @@ export function parseBaseInteger(
  *
  * @throws {RangeError} radix 不在 2 到 36 之间，或为非二、八、十六进制请求前缀。
  */
-export function formatBaseInteger(
-  value: bigint,
-  radix: number,
-  options: BaseIntegerFormatOptions = {},
-): string {
+export function formatBaseInteger(value: bigint, radix: number, options: BaseIntegerFormatOptions = {}): string {
   assertRadix(radix);
   const { includePrefix = false, uppercase = false } = options;
   const prefix = includePrefix ? getRadixPrefix(radix) : "";
@@ -340,12 +317,7 @@ export function formatBaseInteger(
  * @throws {RangeError} 进制或配置非法。
  * @throws {SyntaxError} 输入不是合法的源进制整数。
  */
-export function convertBase(
-  value: string,
-  fromRadix: number,
-  toRadix: number,
-  options: ConvertBaseOptions = {},
-): string {
+export function convertBase(value: string, fromRadix: number, toRadix: number, options: ConvertBaseOptions = {}): string {
   assertRadix(fromRadix);
   assertRadix(toRadix);
   const parsed = parseBaseInteger(value, fromRadix, options);
@@ -416,11 +388,7 @@ export function ceilTo(value: number, precision = 0): number {
  *
  * @throws {RangeError} 数字或容差不是有限值，或容差小于 0。
  */
-export function nearlyEqual(
-  first: number,
-  second: number,
-  options: NearlyEqualOptions = {},
-): boolean {
+export function nearlyEqual(first: number, second: number, options: NearlyEqualOptions = {}): boolean {
   const { absoluteTolerance = Number.EPSILON, relativeTolerance = Number.EPSILON } = options;
   assertFiniteNumbers({ first, second, absoluteTolerance, relativeTolerance });
   if (absoluteTolerance < 0 || relativeTolerance < 0) {
@@ -451,8 +419,7 @@ export function sum(values: readonly number[]): number {
     assertFiniteNumber(value, "values item");
     // Neumaier 补偿求和在数量级差异较大时比直接相加更稳定。
     const next = total + value;
-    compensation +=
-      Math.abs(total) >= Math.abs(value) ? total - next + value : value - next + total;
+    compensation += Math.abs(total) >= Math.abs(value) ? total - next + value : value - next + total;
     total = next;
   }
 
@@ -510,19 +477,8 @@ export function percentage(part: number, total: number, precision = 2): number |
  *
  * @throws {RangeError} precision 超出支持范围，或 locale 不是有效的区域设置。
  */
-export function formatNumber(
-  value: NumberInput | null | undefined,
-  options: FormatNumberOptions = {},
-): string {
-  const {
-    precision = 2,
-    useGrouping = true,
-    unit = "",
-    autoScale = "none",
-    space = "auto",
-    locale = "en-US",
-    fallback = "--",
-  } = options;
+export function formatNumber(value: NumberInput | null | undefined, options: FormatNumberOptions = {}): string {
+  const { precision = 2, useGrouping = true, unit = "", autoScale = "none", space = "auto", locale = "en-US", fallback = "--" } = options;
   assertFormatPrecision(precision);
 
   const parsedValue = toFiniteNumber(value);
@@ -549,9 +505,7 @@ export function formatNumber(
     return formattedValue;
   }
 
-  return shouldSeparateUnit(finalUnit, space)
-    ? `${formattedValue} ${finalUnit}`
-    : `${formattedValue}${finalUnit}`;
+  return shouldSeparateUnit(finalUnit, space) ? `${formattedValue} ${finalUnit}` : `${formattedValue}${finalUnit}`;
 }
 
 const DECIMAL_NUMBER_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/iu;
@@ -571,14 +525,8 @@ interface NormalizedBaseInteger {
   readonly negative: boolean;
 }
 
-function resolveBaseParseOptions(
-  options: BaseIntegerParseOptions,
-): ResolvedBaseIntegerParseOptions {
-  const {
-    allowPrefix = true,
-    maxDigits = DEFAULT_MAX_BASE_DIGITS,
-    trimWhitespace = true,
-  } = options;
+function resolveBaseParseOptions(options: BaseIntegerParseOptions): ResolvedBaseIntegerParseOptions {
+  const { allowPrefix = true, maxDigits = DEFAULT_MAX_BASE_DIGITS, trimWhitespace = true } = options;
 
   if (!Number.isSafeInteger(maxDigits) || maxDigits <= 0) {
     throw new RangeError("maxDigits must be a positive safe integer");
@@ -587,11 +535,7 @@ function resolveBaseParseOptions(
   return { allowPrefix, maxDigits, trimWhitespace };
 }
 
-function normalizeBaseInteger(
-  value: string,
-  radix: number,
-  options: ResolvedBaseIntegerParseOptions,
-): NormalizedBaseInteger | undefined {
+function normalizeBaseInteger(value: string, radix: number, options: ResolvedBaseIntegerParseOptions): NormalizedBaseInteger | undefined {
   let normalized = options.trimWhitespace ? value.trim() : value;
   let negative = false;
 
@@ -643,11 +587,7 @@ function assertRadix(radix: number): void {
   }
 }
 
-function applyPrecision(
-  value: number,
-  precision: number,
-  operation: (value: number) => number,
-): number {
+function applyPrecision(value: number, precision: number, operation: (value: number) => number): number {
   assertFiniteNumber(value, "value");
   assertPrecision(precision);
 
@@ -673,10 +613,7 @@ function applyPrecision(
   return normalizeNegativeZero(result);
 }
 
-function scaleNumber(
-  value: number,
-  scale: Exclude<FormatNumberOptions["autoScale"], "none" | undefined>,
-): { value: number; unit: string } {
+function scaleNumber(value: number, scale: Exclude<FormatNumberOptions["autoScale"], "none" | undefined>): { value: number; unit: string } {
   const absoluteValue = Math.abs(value);
   const units =
     scale === "zh"
@@ -717,17 +654,8 @@ function assertFiniteNumbers(values: Readonly<Record<string, number>>): void {
 
 type ResolvedNumberValidationOptions = Required<NumberValidationOptions>;
 
-function resolveNumberValidationOptions(
-  options: NumberValidationOptions,
-): ResolvedNumberValidationOptions {
-  const {
-    minimum = -Infinity,
-    maximum = Infinity,
-    integer = false,
-    safeInteger = false,
-    exclusiveMinimum = false,
-    exclusiveMaximum = false,
-  } = options;
+function resolveNumberValidationOptions(options: NumberValidationOptions): ResolvedNumberValidationOptions {
+  const { minimum = -Infinity, maximum = Infinity, integer = false, safeInteger = false, exclusiveMinimum = false, exclusiveMaximum = false } = options;
 
   if (Number.isNaN(minimum) || Number.isNaN(maximum)) {
     throw new RangeError("minimum and maximum must not be NaN");
@@ -747,25 +675,16 @@ function resolveNumberValidationOptions(
 }
 
 function matchesNumberValidation(value: number, options: ResolvedNumberValidationOptions): boolean {
-  if (
-    options.safeInteger ? !Number.isSafeInteger(value) : options.integer && !Number.isInteger(value)
-  ) {
+  if (options.safeInteger ? !Number.isSafeInteger(value) : options.integer && !Number.isInteger(value)) {
     return false;
   }
 
-  const satisfiesMinimum = options.exclusiveMinimum
-    ? value > options.minimum
-    : value >= options.minimum;
-  const satisfiesMaximum = options.exclusiveMaximum
-    ? value < options.maximum
-    : value <= options.maximum;
+  const satisfiesMinimum = options.exclusiveMinimum ? value > options.minimum : value >= options.minimum;
+  const satisfiesMaximum = options.exclusiveMaximum ? value < options.maximum : value <= options.maximum;
   return satisfiesMinimum && satisfiesMaximum;
 }
 
-function describeNumberRequirement(
-  fieldName: string,
-  options: ResolvedNumberValidationOptions,
-): string {
+function describeNumberRequirement(fieldName: string, options: ResolvedNumberValidationOptions): string {
   const requirements: string[] = [];
   if (options.safeInteger) {
     requirements.push("a safe integer");
@@ -773,9 +692,7 @@ function describeNumberRequirement(
     requirements.push("an integer");
   }
   if (options.minimum !== -Infinity) {
-    requirements.push(
-      `${options.exclusiveMinimum ? "greater than" : "at least"} ${options.minimum}`,
-    );
+    requirements.push(`${options.exclusiveMinimum ? "greater than" : "at least"} ${options.minimum}`);
   }
   if (options.maximum !== Infinity) {
     requirements.push(`${options.exclusiveMaximum ? "less than" : "at most"} ${options.maximum}`);
@@ -792,9 +709,7 @@ function assertFiniteNumber(value: number, name: string): void {
 
 function assertPrecision(precision: number): void {
   if (!Number.isInteger(precision) || Math.abs(precision) > MAX_DECIMAL_PRECISION) {
-    throw new RangeError(
-      `precision must be an integer between -${MAX_DECIMAL_PRECISION} and ${MAX_DECIMAL_PRECISION}`,
-    );
+    throw new RangeError(`precision must be an integer between -${MAX_DECIMAL_PRECISION} and ${MAX_DECIMAL_PRECISION}`);
   }
 }
 

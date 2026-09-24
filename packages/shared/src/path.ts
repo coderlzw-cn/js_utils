@@ -37,10 +37,7 @@ export function parsePath(pathString: string): PathObject {
 
   // 3. 提取 base（文件名+后缀）和 dir（父目录）
   // 移除末尾多余的分隔符（如 'a/b/' -> 'a/b'）
-  const cleanPath =
-    normalizedPath.length > root.length && normalizedPath.endsWith("/")
-      ? normalizedPath.slice(0, -1)
-      : normalizedPath;
+  const cleanPath = normalizedPath.length > root.length && normalizedPath.endsWith("/") ? normalizedPath.slice(0, -1) : normalizedPath;
 
   const lastSlashIndex = cleanPath.lastIndexOf("/");
 

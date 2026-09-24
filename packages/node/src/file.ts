@@ -1,15 +1,6 @@
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import fs, { constants } from "node:fs";
-import {
-  access,
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  rename,
-  unlink,
-  type FileHandle,
-} from "node:fs/promises";
+import { access, lstat, mkdir, open, readdir, rename, unlink, type FileHandle } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { Readable } from "node:stream";
 import { resolveArchiveEntryPath } from "./path";
@@ -69,9 +60,7 @@ export async function isWritable(targetPath: string): Promise<FileCheckResult> {
 }
 
 /** 递归判断目录是否包含不可写的后代节点。 */
-export async function containsUnwritableDescendant(
-  directoryPath: string,
-): Promise<FileCheckResult> {
+export async function containsUnwritableDescendant(directoryPath: string): Promise<FileCheckResult> {
   try {
     const entries = await readdir(directoryPath, { withFileTypes: true });
     for (const entry of entries) {
@@ -80,8 +69,7 @@ export async function containsUnwritableDescendant(
       if (writableError) return [writableError, false];
       if (!writable) return [undefined, true];
       if (entry.isDirectory()) {
-        const [descendantError, containsUnwritable] =
-          await containsUnwritableDescendant(targetPath);
+        const [descendantError, containsUnwritable] = await containsUnwritableDescendant(targetPath);
         if (descendantError) return [descendantError, false];
         if (containsUnwritable) return [undefined, true];
       }
@@ -200,9 +188,7 @@ export class BoundedLogFileWriter {
     const content = typeof data === "string" ? Buffer.from(data, "utf8") : Buffer.from(data);
     if (content.byteLength === 0) return Promise.resolve();
     if (content.byteLength > this.maxBytes) {
-      return Promise.reject(
-        new RangeError(`单次写入 ${content.byteLength} 字节，超过 maxBytes ${this.maxBytes}`),
-      );
+      return Promise.reject(new RangeError(`单次写入 ${content.byteLength} 字节，超过 maxBytes ${this.maxBytes}`));
     }
     return this.enqueue(() => this.writeInternal(content));
   }
@@ -279,10 +265,7 @@ export class BoundedLogFileWriter {
     await sourceHandle.close();
     this.handle = undefined;
 
-    const temporaryPath = join(
-      dirname(this.filePath),
-      `.${basename(this.filePath)}.compact-${process.pid}-${Date.now()}-${this.temporarySequence++}`,
-    );
+    const temporaryPath = join(dirname(this.filePath), `.${basename(this.filePath)}.compact-${process.pid}-${Date.now()}-${this.temporarySequence++}`);
     let temporaryHandle: FileHandle | undefined;
     let replaced = false;
 
@@ -331,23 +314,14 @@ async function writeAll(handle: FileHandle, content: Uint8Array) {
 }
 
 /** 从不超过目标字节数的第一个完整 LF 分隔行开始保留，避免切断 UTF-8 字符或日志行。 */
-async function readCompleteLogTail(
-  handle: FileHandle,
-  fileBytes: number,
-  targetBytes: number,
-): Promise<Buffer> {
+async function readCompleteLogTail(handle: FileHandle, fileBytes: number, targetBytes: number): Promise<Buffer> {
   if (targetBytes === 0 || fileBytes === 0) return Buffer.alloc(0);
   const start = Math.max(0, fileBytes - targetBytes);
   const content = Buffer.alloc(fileBytes - start);
   let offset = 0;
 
   while (offset < content.byteLength) {
-    const { bytesRead } = await handle.read(
-      content,
-      offset,
-      content.byteLength - offset,
-      start + offset,
-    );
+    const { bytesRead } = await handle.read(content, offset, content.byteLength - offset, start + offset);
     if (bytesRead === 0) break;
     offset += bytesRead;
   }
@@ -402,9 +376,7 @@ function isPermissionDenied(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const code = Reflect.get(error, "code");
   if (code === "EACCES" || code === "EPERM") return true;
-  return /permission denied|操作不允许/iu.test(
-    `${readStderr(error)}\n${Reflect.get(error, "message") ?? ""}`,
-  );
+  return /permission denied|操作不允许/iu.test(`${readStderr(error)}\n${Reflect.get(error, "message") ?? ""}`);
 }
 
 function parseDuBytes(output: string): bigint {
@@ -425,24 +397,7 @@ function isErrnoCode(error: unknown, code: string): boolean {
 }
 
 /** 最长后缀优先，避免 `.tar.gz` 被拆成 `.tar`。 */
-export const ARCHIVE_SUFFIXES = [
-  ".tar.gz",
-  ".tar.bz2",
-  ".tar.xz",
-  ".tar.lzma",
-  ".tar.zst",
-  ".tar.z",
-  ".tgz",
-  ".tbz2",
-  ".tbz",
-  ".txz",
-  ".tzst",
-  ".taz",
-  ".tar",
-  ".zip",
-  ".7z",
-  ".rar",
-] as const;
+export const ARCHIVE_SUFFIXES = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lzma", ".tar.zst", ".tar.z", ".tgz", ".tbz2", ".tbz", ".txz", ".tzst", ".taz", ".tar", ".zip", ".7z", ".rar"] as const;
 
 export type ArchiveSuffix = (typeof ARCHIVE_SUFFIXES)[number];
 
@@ -499,13 +454,10 @@ export function archiveContentType(filename: string): string {
   if (parsed.suffix === ".zip") return "application/zip";
   if (parsed.suffix === ".7z") return "application/x-7z-compressed";
   if (parsed.suffix === ".rar") return "application/vnd.rar";
-  if (parsed.suffix === ".tar.gz" || parsed.suffix === ".tgz" || parsed.suffix === ".taz")
-    return "application/gzip";
+  if (parsed.suffix === ".tar.gz" || parsed.suffix === ".tgz" || parsed.suffix === ".taz") return "application/gzip";
   if (parsed.suffix === ".tar.z") return "application/x-compress";
-  if (parsed.suffix === ".tar.bz2" || parsed.suffix === ".tbz2" || parsed.suffix === ".tbz")
-    return "application/x-bzip2";
-  if (parsed.suffix === ".tar.xz" || parsed.suffix === ".txz" || parsed.suffix === ".tar.lzma")
-    return "application/x-xz";
+  if (parsed.suffix === ".tar.bz2" || parsed.suffix === ".tbz2" || parsed.suffix === ".tbz") return "application/x-bzip2";
+  if (parsed.suffix === ".tar.xz" || parsed.suffix === ".txz" || parsed.suffix === ".tar.lzma") return "application/x-xz";
   if (parsed.suffix === ".tar.zst" || parsed.suffix === ".tzst") return "application/zstd";
   return "application/x-tar";
 }
@@ -515,11 +467,7 @@ export function archiveContentType(filename: string): string {
  *
  * 解压前校验条目路径；解压后拒绝符号链接与特殊文件。可通过 `signal` / `timeoutMs` 取消或限时。
  */
-export async function extractArchive(
-  archivePath: string,
-  destination: string,
-  options: ExtractArchiveOptions = {},
-) {
+export async function extractArchive(archivePath: string, destination: string, options: ExtractArchiveOptions = {}) {
   assertCommandPath(archivePath, "archivePath");
   assertCommandPath(destination, "destination");
   const timeoutMs = resolveTimeoutMs(options.timeoutMs);
@@ -547,26 +495,18 @@ export async function extractArchive(
       });
     } catch (error) {
       if (!isMissingCommand(error, "unzip")) throw error;
-      await runSystemCommand(
-        await requireSevenZip(options.signal, timeoutMs),
-        ["x", "-y", "-bd", `-o${destination}`, archivePath],
-        {
-          signal: options.signal,
-          timeoutMs,
-          maxStdoutBytes: 0,
-        },
-      );
-    }
-  } else {
-    await runSystemCommand(
-      await requireSevenZip(options.signal, timeoutMs),
-      ["x", "-y", "-bd", `-o${destination}`, archivePath],
-      {
+      await runSystemCommand(await requireSevenZip(options.signal, timeoutMs), ["x", "-y", "-bd", `-o${destination}`, archivePath], {
         signal: options.signal,
         timeoutMs,
         maxStdoutBytes: 0,
-      },
-    );
+      });
+    }
+  } else {
+    await runSystemCommand(await requireSevenZip(options.signal, timeoutMs), ["x", "-y", "-bd", `-o${destination}`, archivePath], {
+      signal: options.signal,
+      timeoutMs,
+      maxStdoutBytes: 0,
+    });
   }
 
   await assertExtractedTree(destination, destination, "");
@@ -594,9 +534,7 @@ export function createTarGzStream(directoryPath: string): Readable {
     stderr = `${stderr}${chunk.toString("utf8")}`.slice(-STDERR_MAX_BYTES);
   });
   child.on("error", (error) => {
-    stream.destroy(
-      isErrnoCode(error, "ENOENT") ? new Error("打包需要系统命令 tar，但当前环境未安装") : error,
-    );
+    stream.destroy(isErrnoCode(error, "ENOENT") ? new Error("打包需要系统命令 tar，但当前环境未安装") : error);
   });
   child.on("close", (code) => {
     if (code === 0 || stream.destroyed) return;
@@ -614,34 +552,13 @@ async function sniffArchiveKind(filePath: string): Promise<ArchiveKind> {
     const header = Buffer.alloc(8);
     const { bytesRead } = await handle.read(header, 0, 8, 0);
     const magic = header.subarray(0, bytesRead);
-    if (
-      magic.length >= 4 &&
-      magic[0] === 0x50 &&
-      magic[1] === 0x4b &&
-      (magic[2] === 0x03 || magic[2] === 0x05 || magic[2] === 0x07)
-    ) {
+    if (magic.length >= 4 && magic[0] === 0x50 && magic[1] === 0x4b && (magic[2] === 0x03 || magic[2] === 0x05 || magic[2] === 0x07)) {
       return "zip";
     }
-    if (
-      magic.length >= 6 &&
-      magic[0] === 0x37 &&
-      magic[1] === 0x7a &&
-      magic[2] === 0xbc &&
-      magic[3] === 0xaf &&
-      magic[4] === 0x27 &&
-      magic[5] === 0x1c
-    ) {
+    if (magic.length >= 6 && magic[0] === 0x37 && magic[1] === 0x7a && magic[2] === 0xbc && magic[3] === 0xaf && magic[4] === 0x27 && magic[5] === 0x1c) {
       return "sevenZ";
     }
-    if (
-      magic.length >= 7 &&
-      magic[0] === 0x52 &&
-      magic[1] === 0x61 &&
-      magic[2] === 0x72 &&
-      magic[3] === 0x21 &&
-      magic[4] === 0x1a &&
-      magic[5] === 0x07
-    ) {
+    if (magic.length >= 7 && magic[0] === 0x52 && magic[1] === 0x61 && magic[2] === 0x72 && magic[3] === 0x21 && magic[4] === 0x1a && magic[5] === 0x07) {
       return "rar";
     }
     return "tar";
@@ -652,12 +569,7 @@ async function sniffArchiveKind(filePath: string): Promise<ArchiveKind> {
 
 type ListedEntry = { path: string; kind: "file" | "directory" | "other" };
 
-async function listArchiveEntries(
-  kind: ArchiveKind,
-  archivePath: string,
-  signal: AbortSignal | undefined,
-  timeoutMs: number,
-): Promise<ListedEntry[]> {
+async function listArchiveEntries(kind: ArchiveKind, archivePath: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<ListedEntry[]> {
   if (kind === "tar") {
     const stdout = await runSystemCommand("tar", ["-tf", archivePath], { signal, timeoutMs });
     return parseNameList(stdout);
@@ -685,16 +597,8 @@ function parseNameList(stdout: string): ListedEntry[] {
     .map((path) => ({ path, kind: "file" }));
 }
 
-async function listSevenZipEntries(
-  archivePath: string,
-  signal: AbortSignal | undefined,
-  timeoutMs: number,
-): Promise<ListedEntry[]> {
-  const stdout = await runSystemCommand(
-    await requireSevenZip(signal, timeoutMs),
-    ["l", "-slt", archivePath],
-    { signal, timeoutMs },
-  );
+async function listSevenZipEntries(archivePath: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<ListedEntry[]> {
+  const stdout = await runSystemCommand(await requireSevenZip(signal, timeoutMs), ["l", "-slt", archivePath], { signal, timeoutMs });
   const entries: ListedEntry[] = [];
   const archiveName = basename(archivePath);
   for (const block of stdout.split("\n\n")) {
@@ -703,10 +607,7 @@ async function listSevenZipEntries(
     const symlink = /^Symbolic Link = (.+)$/m.exec(block)?.[1]?.trim();
     const hardLink = /^Hard Link = (.+)$/m.exec(block)?.[1]?.trim();
     const folder = /^Folder = \+$/m.test(block);
-    if (
-      (symlink !== undefined && symlink.length > 0) ||
-      (hardLink !== undefined && hardLink.length > 0)
-    ) {
+    if ((symlink !== undefined && symlink.length > 0) || (hardLink !== undefined && hardLink.length > 0)) {
       entries.push({ path, kind: "other" });
       continue;
     }
@@ -717,10 +618,7 @@ async function listSevenZipEntries(
 
 let sevenZipBin: string | undefined;
 
-async function requireSevenZip(
-  signal: AbortSignal | undefined,
-  timeoutMs: number,
-): Promise<string> {
+async function requireSevenZip(signal: AbortSignal | undefined, timeoutMs: number): Promise<string> {
   if (sevenZipBin) return sevenZipBin;
   for (const command of ["7z", "7za", "7zz"]) {
     try {
@@ -748,11 +646,7 @@ function resolveTimeoutMs(timeoutMs: number | undefined): number {
   return timeoutMs;
 }
 
-function runSystemCommand(
-  command: string,
-  args: readonly string[],
-  options: { signal?: AbortSignal; timeoutMs: number; maxStdoutBytes?: number },
-): Promise<string> {
+function runSystemCommand(command: string, args: readonly string[], options: { signal?: AbortSignal; timeoutMs: number; maxStdoutBytes?: number }): Promise<string> {
   const maxStdoutBytes = options.maxStdoutBytes ?? STDOUT_LIST_MAX_BYTES;
   return new Promise((resolve, reject) => {
     if (options.signal?.aborted) {
@@ -814,12 +708,7 @@ function runSystemCommand(
       stderr = `${stderr}${chunk.toString("utf8")}`.slice(-STDERR_MAX_BYTES);
     });
     child.on("error", (error) => {
-      finish(
-        isErrnoCode(error, "ENOENT")
-          ? new Error(`解压需要系统命令 ${command}，但当前环境未安装`)
-          : error,
-        "",
-      );
+      finish(isErrnoCode(error, "ENOENT") ? new Error(`解压需要系统命令 ${command}，但当前环境未安装`) : error, "");
     });
     child.on("close", (code) => {
       if (settled) return;
@@ -837,9 +726,7 @@ function abortError(signal: AbortSignal | undefined, command: string): Error {
 }
 
 function isMissingCommand(error: unknown, command: string): boolean {
-  return (
-    error instanceof Error && error.message === `解压需要系统命令 ${command}，但当前环境未安装`
-  );
+  return error instanceof Error && error.message === `解压需要系统命令 ${command}，但当前环境未安装`;
 }
 
 async function assertExtractedTree(root: string, directory: string, relative: string) {

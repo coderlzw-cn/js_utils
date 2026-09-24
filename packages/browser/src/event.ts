@@ -32,19 +32,9 @@ export type DispatchCustomEventOptions<T> = Omit<CustomEventInit<T>, "detail">;
  * 支持原生 addEventListener 配置和 AbortSignal。若 signal 已中止，则不会添加
  * 监听。即使浏览器通过 signal 自动移除了监听器，返回的清理函数仍可安全调用。
  */
-export function listenEvent<K extends keyof WindowEventMap>(
-  target: Window,
-  type: K,
-  listener: TypedEventListener<WindowEventMap[K]>,
-  options?: boolean | AddEventListenerOptions,
-): EventCleanup;
+export function listenEvent<K extends keyof WindowEventMap>(target: Window, type: K, listener: TypedEventListener<WindowEventMap[K]>, options?: boolean | AddEventListenerOptions): EventCleanup;
 /** 为 Document 添加类型安全的事件监听。 */
-export function listenEvent<K extends keyof DocumentEventMap>(
-  target: Document,
-  type: K,
-  listener: TypedEventListener<DocumentEventMap[K]>,
-  options?: boolean | AddEventListenerOptions,
-): EventCleanup;
+export function listenEvent<K extends keyof DocumentEventMap>(target: Document, type: K, listener: TypedEventListener<DocumentEventMap[K]>, options?: boolean | AddEventListenerOptions): EventCleanup;
 /** 为 HTMLElement 添加类型安全的事件监听。 */
 export function listenEvent<K extends keyof HTMLElementEventMap>(
   target: HTMLElement,
@@ -53,18 +43,8 @@ export function listenEvent<K extends keyof HTMLElementEventMap>(
   options?: boolean | AddEventListenerOptions,
 ): EventCleanup;
 /** 为普通 EventTarget 或自定义事件添加监听。 */
-export function listenEvent<E extends Event = Event>(
-  target: EventTarget,
-  type: string,
-  listener: TypedEventListener<E>,
-  options?: boolean | AddEventListenerOptions,
-): EventCleanup;
-export function listenEvent(
-  target: EventTarget,
-  type: string,
-  listener: TypedEventListener,
-  options?: boolean | AddEventListenerOptions,
-): EventCleanup {
+export function listenEvent<E extends Event = Event>(target: EventTarget, type: string, listener: TypedEventListener<E>, options?: boolean | AddEventListenerOptions): EventCleanup;
+export function listenEvent(target: EventTarget, type: string, listener: TypedEventListener, options?: boolean | AddEventListenerOptions): EventCleanup {
   const signal = typeof options === "object" ? options.signal : undefined;
 
   if (signal?.aborted) {
@@ -124,11 +104,7 @@ export function delegateEvent<E extends Event = Event, T extends Element = Eleme
  * 事件匹配、超时、主动取消或 predicate 抛出异常后都会立即清理所有监听器和
  * 定时器，避免 Promise 结束后残留资源。AbortSignal 中止时优先使用其 reason。
  */
-export function waitForEvent<E extends Event = Event>(
-  target: EventTarget,
-  type: string,
-  options: WaitForEventOptions<E> = {},
-): Promise<E> {
+export function waitForEvent<E extends Event = Event>(target: EventTarget, type: string, options: WaitForEventOptions<E> = {}): Promise<E> {
   const { capture = false, predicate, signal, timeout } = options;
 
   if (timeout !== undefined && (!Number.isFinite(timeout) || timeout < 0)) {
@@ -185,12 +161,7 @@ export function waitForEvent<E extends Event = Event>(
     if (timeout !== undefined) {
       timeoutId = setTimeout(() => {
         cleanup();
-        reject(
-          new DOMException(
-            `Waiting for event "${type}" timed out after ${timeout} ms.`,
-            "TimeoutError",
-          ),
-        );
+        reject(new DOMException(`Waiting for event "${type}" timed out after ${timeout} ms.`, "TimeoutError"));
       }, timeout);
     }
   });
@@ -202,12 +173,7 @@ export function waitForEvent<E extends Event = Event>(
  * 返回值与 dispatchEvent 一致：事件可取消且监听器调用了 preventDefault() 时
  * 返回 false，否则返回 true。
  */
-export function dispatchCustomEvent<T>(
-  target: EventTarget,
-  type: string,
-  detail: T,
-  options: DispatchCustomEventOptions<T> = {},
-): boolean {
+export function dispatchCustomEvent<T>(target: EventTarget, type: string, detail: T, options: DispatchCustomEventOptions<T> = {}): boolean {
   return target.dispatchEvent(
     new CustomEvent<T>(type, {
       ...options,
@@ -248,11 +214,7 @@ export function combineEventCleanups(...cleanups: readonly EventCleanup[]): Even
 }
 
 /** 在事件传播路径中查找未越过根节点的首个匹配元素。 */
-function findDelegatedElement<T extends Element>(
-  event: Event,
-  root: EventDelegationRoot,
-  selector: string,
-): T | undefined {
+function findDelegatedElement<T extends Element>(event: Event, root: EventDelegationRoot, selector: string): T | undefined {
   for (const eventTarget of event.composedPath()) {
     if (eventTarget instanceof Element && eventTarget.matches(selector)) {
       return eventTarget as T;

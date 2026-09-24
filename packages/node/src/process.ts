@@ -1,9 +1,4 @@
-import {
-  execFile,
-  execFileSync,
-  type ChildProcess,
-  type ExecFileOptionsWithStringEncoding,
-} from "node:child_process";
+import { execFile, execFileSync, type ChildProcess, type ExecFileOptionsWithStringEncoding } from "node:child_process";
 
 /**
  * Node.js 进程相关工具：构造外部命令调用、解析进程环境、查询进程及终止进程树。
@@ -56,10 +51,7 @@ export interface ProcessTreeTerminationResult {
   rootSignalled: boolean;
 }
 
-export interface ExecFileWithSudoOptions extends Omit<
-  ExecFileOptionsWithStringEncoding,
-  "encoding"
-> {
+export interface ExecFileWithSudoOptions extends Omit<ExecFileOptionsWithStringEncoding, "encoding"> {
   /** 输出文本编码，默认使用 UTF-8。 */
   encoding?: BufferEncoding;
 }
@@ -84,18 +76,10 @@ const defaultExecutor: ProcessCommandExecutor = (file, args) => {
  * 可执行文件与参数始终分别传给 `execFile`，不会经过 Shell，也不会发生额外的字符串
  * 拼接或展开。`cwd`、`env`、`timeout`、`maxBuffer`、`signal` 等 execFile 选项可直接透传。
  */
-export function execFileWithSudo(
-  file: string,
-  args: readonly string[],
-  password: string,
-  options: ExecFileWithSudoOptions = {},
-): Promise<ExecFileResult> {
+export function execFileWithSudo(file: string, args: readonly string[], password: string, options: ExecFileWithSudoOptions = {}): Promise<ExecFileResult> {
   return new Promise((resolve, reject) => {
-    const child = execFile(
-      "sudo",
-      ["-S", "-p", "", "--", file, ...args],
-      { ...options, encoding: options.encoding ?? "utf8" },
-      (error, stdout, stderr) => (error ? reject(error) : resolve({ stdout, stderr })),
+    const child = execFile("sudo", ["-S", "-p", "", "--", file, ...args], { ...options, encoding: options.encoding ?? "utf8" }, (error, stdout, stderr) =>
+      error ? reject(error) : resolve({ stdout, stderr }),
     );
 
     child.stdin?.end(`${password}\n`);
@@ -126,13 +110,10 @@ export function createCommandInvocation(command: ExecutableCommand): CommandInvo
   // 将可执行文件作为单个 POSIX Shell 词，避免路径中的单引号破坏命令结构。
   const executable = `'${command.file.replaceAll("'", `'\\''`)}'`;
   const executableCommand = capturesEnvironment ? executable : `stdbuf -o0 -e0 ${executable}`;
-  const shellCommand =
-    command.args.length > 0 ? `${executableCommand} ${command.args.join(" ")}` : executableCommand;
+  const shellCommand = command.args.length > 0 ? `${executableCommand} ${command.args.join(" ")}` : executableCommand;
 
   // 仅在环境脚本成功时输出环境，避免把执行失败时的中间状态传给后续命令。
-  const script = capturesEnvironment
-    ? `${shellCommand}\nstatus=$?\nif [ "$status" -eq 0 ]; then env -0 >&3; fi\nexit "$status"`
-    : shellCommand;
+  const script = capturesEnvironment ? `${shellCommand}\nstatus=$?\nif [ "$status" -eq 0 ]; then env -0 >&3; fi\nexit "$status"` : shellCommand;
   const args = ["-lc", script];
 
   if (!command.privileged) {
@@ -183,10 +164,7 @@ export function parseProcessLines(stdout: string): ProcessLine[] {
  *
  * 该方法是幂等的尽力终止操作，不把“进程已经退出”视为异常。
  */
-export function terminateChildProcessTree(
-  child: Pick<ChildProcess, "pid" | "kill">,
-  options: TerminateChildProcessTreeOptions = {},
-): ProcessTreeTerminationResult {
+export function terminateChildProcessTree(child: Pick<ChildProcess, "pid" | "kill">, options: TerminateChildProcessTreeOptions = {}): ProcessTreeTerminationResult {
   const pid = child.pid;
   if (pid === undefined) return { descendantsSignalled: false, rootSignalled: false };
   if (!Number.isSafeInteger(pid) || pid <= 0) throw new TypeError(`无效的子进程 PID：${pid}`);

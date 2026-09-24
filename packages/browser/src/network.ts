@@ -109,10 +109,7 @@ export function getNetworkStatus(): NetworkStatus {
  * 事件被统一转换为 NetworkStatus，调用方无需分别管理 online、offline 和
  * connection.change 监听器。
  */
-export function observeNetworkStatus(
-  listener: NetworkStatusListener,
-  options: ObserveNetworkStatusOptions = {},
-): () => void {
+export function observeNetworkStatus(listener: NetworkStatusListener, options: ObserveNetworkStatusOptions = {}): () => void {
   const { emitInitial = true, signal } = options;
 
   if (signal?.aborted) {
@@ -182,20 +179,14 @@ export function sendBeacon(url: string | URL, data?: BodyInit | null): boolean {
 function getNetworkConnection(navigatorValue: Navigator): BrowserNetworkInformation | undefined {
   const navigatorWithConnection = navigatorValue as NavigatorWithConnection;
 
-  return (
-    navigatorWithConnection.connection ??
-    navigatorWithConnection.mozConnection ??
-    navigatorWithConnection.webkitConnection
-  );
+  return navigatorWithConnection.connection ?? navigatorWithConnection.mozConnection ?? navigatorWithConnection.webkitConnection;
 }
 
 /** 将浏览器连接对象转换为不暴露可变 EventTarget 的只读快照。 */
 function createConnectionInfo(connection: BrowserNetworkInformation): NetworkConnectionInfo {
   return {
     ...(typeof connection.type === "string" ? { type: connection.type } : {}),
-    ...(typeof connection.effectiveType === "string"
-      ? { effectiveType: connection.effectiveType }
-      : {}),
+    ...(typeof connection.effectiveType === "string" ? { effectiveType: connection.effectiveType } : {}),
     ...(isNonNegativeFiniteNumber(connection.downlink) ? { downlink: connection.downlink } : {}),
     ...(isNonNegativeFiniteNumber(connection.rtt) ? { rtt: connection.rtt } : {}),
     ...(typeof connection.saveData === "boolean" ? { saveData: connection.saveData } : {}),

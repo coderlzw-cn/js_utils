@@ -93,10 +93,7 @@ export function unique<T>(values: readonly T[]): T[] {
 }
 
 /** 按选择器返回的键去重，保留每个键首次对应的元素和原始顺序。 */
-export function uniqueBy<T, Key>(
-  values: readonly T[],
-  selector: (value: T, index: number, source: readonly T[]) => Key,
-): T[] {
+export function uniqueBy<T, Key>(values: readonly T[], selector: (value: T, index: number, source: readonly T[]) => Key): T[] {
   const seen = new Set<Key>();
   const result: T[] = [];
 
@@ -117,10 +114,7 @@ export function uniqueBy<T, Key>(
  * 使用 Map 可支持对象和 Symbol 键，也不会产生 `__proto__` 原型污染。组内元素
  * 保持原始顺序，返回的分组数组均为新数组。
  */
-export function groupBy<T, Key>(
-  values: readonly T[],
-  selector: (value: T, index: number, source: readonly T[]) => Key,
-): Map<Key, T[]> {
+export function groupBy<T, Key>(values: readonly T[], selector: (value: T, index: number, source: readonly T[]) => Key): Map<Key, T[]> {
   const groups = new Map<Key, T[]>();
 
   values.forEach((value, index) => {
@@ -142,11 +136,7 @@ export function groupBy<T, Key>(
  * @throws {Error} onDuplicate 为 `throw` 且出现重复键。
  * @throws {RangeError} onDuplicate 不是支持的策略。
  */
-export function keyBy<T, Key>(
-  values: readonly T[],
-  selector: (value: T, index: number, source: readonly T[]) => Key,
-  options: KeyByOptions = {},
-): Map<Key, T> {
+export function keyBy<T, Key>(values: readonly T[], selector: (value: T, index: number, source: readonly T[]) => Key, options: KeyByOptions = {}): Map<Key, T> {
   const { onDuplicate = "overwrite" } = options;
   if (onDuplicate !== "overwrite" && onDuplicate !== "keep-first" && onDuplicate !== "throw") {
     throw new RangeError("onDuplicate must be overwrite, keep-first, or throw");
@@ -178,14 +168,8 @@ export function partition<T, Matched extends T>(
   values: readonly T[],
   predicate: (value: T, index: number, source: readonly T[]) => value is Matched,
 ): [matched: Matched[], unmatched: Exclude<T, Matched>[]];
-export function partition<T>(
-  values: readonly T[],
-  predicate: (value: T, index: number, source: readonly T[]) => boolean,
-): [matched: T[], unmatched: T[]];
-export function partition<T>(
-  values: readonly T[],
-  predicate: (value: T, index: number, source: readonly T[]) => boolean,
-): [matched: T[], unmatched: T[]] {
+export function partition<T>(values: readonly T[], predicate: (value: T, index: number, source: readonly T[]) => boolean): [matched: T[], unmatched: T[]];
+export function partition<T>(values: readonly T[], predicate: (value: T, index: number, source: readonly T[]) => boolean): [matched: T[], unmatched: T[]] {
   const matched: T[] = [];
   const unmatched: T[] = [];
 
@@ -205,11 +189,7 @@ export function difference<T>(values: readonly T[], excluded: readonly T[]): T[]
 }
 
 /** 按选择器键计算差集，结果保留 values 中每个键首次对应的元素。 */
-export function differenceBy<T, Key>(
-  values: readonly T[],
-  excluded: readonly T[],
-  selector: (value: T) => Key,
-): T[] {
+export function differenceBy<T, Key>(values: readonly T[], excluded: readonly T[], selector: (value: T) => Key): T[] {
   const excludedKeys = new Set(excluded.map(selector));
   const seen = new Set<Key>();
   const result: T[] = [];
@@ -236,11 +216,7 @@ export function intersection<T>(firstValues: readonly T[], secondValues: readonl
 }
 
 /** 按选择器键计算交集，结果保留 firstValues 中每个键首次对应的元素。 */
-export function intersectionBy<T, Key>(
-  firstValues: readonly T[],
-  secondValues: readonly T[],
-  selector: (value: T) => Key,
-): T[] {
+export function intersectionBy<T, Key>(firstValues: readonly T[], secondValues: readonly T[], selector: (value: T) => Key): T[] {
   const secondKeys = new Set(secondValues.map(selector));
   const seen = new Set<Key>();
   const result: T[] = [];
@@ -303,11 +279,7 @@ export function stableSort<T>(values: readonly T[], comparator: ArrayComparator<
  *
  * @throws {TypeError} 比较器返回 `NaN` 或无穷值。
  */
-export function binarySearch<T>(
-  values: readonly T[],
-  target: T,
-  comparator: ArrayComparator<T>,
-): number {
+export function binarySearch<T>(values: readonly T[], target: T, comparator: ArrayComparator<T>): number {
   let low = 0;
   let high = values.length;
 
@@ -360,10 +332,7 @@ export function move<T>(values: readonly T[], fromIndex: number, toIndex: number
  *
  * 较短数组缺失的位置使用 `undefined`，不会截断业务数据。
  */
-export function zip<First, Second>(
-  firstValues: readonly First[],
-  secondValues: readonly Second[],
-): Array<readonly [First | undefined, Second | undefined]> {
+export function zip<First, Second>(firstValues: readonly First[], secondValues: readonly Second[]): Array<readonly [First | undefined, Second | undefined]> {
   const length = Math.max(firstValues.length, secondValues.length);
   return Array.from({ length }, (_, index) => [firstValues[index], secondValues[index]] as const);
 }
@@ -375,11 +344,7 @@ export function zip<First, Second>(
  *
  * @throws {RangeError} page 或 pageSize 不是正安全整数。
  */
-export function paginate<T>(
-  values: readonly T[],
-  page: number,
-  pageSize: number,
-): PaginationResult<T> {
+export function paginate<T>(values: readonly T[], page: number, pageSize: number): PaginationResult<T> {
   assertPositiveSafeInteger(page, "page");
   assertPositiveSafeInteger(pageSize, "pageSize");
 

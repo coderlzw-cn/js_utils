@@ -65,10 +65,7 @@ export interface ObserveScreenOrientationOptions {
 }
 
 /** 屏幕方向变化监听器。 */
-export type ScreenOrientationListener = (
-  screen: DeviceScreenInfo,
-  event: Event | undefined,
-) => void;
+export type ScreenOrientationListener = (screen: DeviceScreenInfo, event: Event | undefined) => void;
 
 /** 带主动取消能力的定位请求配置。 */
 export interface GeolocationRequestOptions extends PositionOptions {
@@ -146,10 +143,7 @@ export function getDeviceScreenInfo(): DeviceScreenInfo {
  * 优先使用 Screen Orientation API；旧浏览器降级为 window.orientationchange。
  * 初次回调抛出异常时会立即清理监听器，避免调用方无法取得清理函数。
  */
-export function observeScreenOrientation(
-  listener: ScreenOrientationListener,
-  options: ObserveScreenOrientationOptions = {},
-): EventCleanup {
+export function observeScreenOrientation(listener: ScreenOrientationListener, options: ObserveScreenOrientationOptions = {}): EventCleanup {
   const { emitInitial = true, signal } = options;
   const browserWindow = getBrowserWindow();
 
@@ -162,9 +156,7 @@ export function observeScreenOrientation(
     listener(getDeviceScreenInfo(), event);
   };
   const listenerOptions = signal ? { signal } : undefined;
-  const cleanup = orientation
-    ? listenEvent(orientation, "change", handleChange, listenerOptions)
-    : listenEvent(browserWindow, "orientationchange", handleChange, listenerOptions);
+  const cleanup = orientation ? listenEvent(orientation, "change", handleChange, listenerOptions) : listenEvent(browserWindow, "orientationchange", handleChange, listenerOptions);
 
   if (emitInitial) {
     try {
@@ -210,9 +202,7 @@ export function isGeolocationSupported(): boolean {
  * 原生 Geolocation API 无法真正取消底层定位，本函数会在 abort 后忽略迟到的
  * 成功或失败回调。定位通常要求 HTTPS 且需要用户授权，错误会保持原生类型。
  */
-export function getCurrentGeolocation(
-  options: GeolocationRequestOptions = {},
-): Promise<GeolocationPosition> {
+export function getCurrentGeolocation(options: GeolocationRequestOptions = {}): Promise<GeolocationPosition> {
   const { signal } = options;
   const geolocation = getGeolocation();
 
@@ -266,11 +256,7 @@ export function getCurrentGeolocation(
  * 支持 AbortSignal 自动停止。定位失败通过 onError 返回，不会自动结束监听，
  * 便于浏览器在信号恢复或权限状态变化后继续提供位置。
  */
-export function watchGeolocation(
-  listener: PositionCallback,
-  onError?: PositionErrorCallback,
-  options: GeolocationWatchOptions = {},
-): EventCleanup {
+export function watchGeolocation(listener: PositionCallback, onError?: PositionErrorCallback, options: GeolocationWatchOptions = {}): EventCleanup {
   const { signal } = options;
   const geolocation = getGeolocation();
 
@@ -308,8 +294,7 @@ export function isVibrationSupported(): boolean {
  */
 export function vibrate(pattern: number | readonly number[]): boolean {
   const navigatorValue = getBrowserWindow().navigator;
-  const normalizedPattern: number | number[] =
-    typeof pattern === "number" ? pattern : Array.from(pattern);
+  const normalizedPattern: number | number[] = typeof pattern === "number" ? pattern : Array.from(pattern);
   const durations = typeof normalizedPattern === "number" ? [normalizedPattern] : normalizedPattern;
 
   if (durations.some((duration) => !Number.isFinite(duration) || duration < 0)) {
@@ -344,19 +329,14 @@ function getGeolocation(): Geolocation {
   const geolocation = getBrowserWindow().navigator.geolocation;
 
   if (!geolocation) {
-    throw new DOMException(
-      "Geolocation API is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("Geolocation API is not supported in the current browser.", "NotSupportedError");
   }
 
   return geolocation;
 }
 
 /** 去除扩展的 signal 字段，仅向原生定位 API 传递标准配置。 */
-function toNativePositionOptions(
-  options: GeolocationRequestOptions | GeolocationWatchOptions,
-): PositionOptions {
+function toNativePositionOptions(options: GeolocationRequestOptions | GeolocationWatchOptions): PositionOptions {
   const { enableHighAccuracy, maximumAge, timeout } = options;
 
   return {

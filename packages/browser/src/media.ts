@@ -118,10 +118,7 @@ export function isDisplayMediaSupported(): boolean {
     return false;
   }
 
-  return (
-    typeof (window.navigator.mediaDevices as MediaDevicesWithDisplayMedia | undefined)
-      ?.getDisplayMedia === "function"
-  );
+  return typeof (window.navigator.mediaDevices as MediaDevicesWithDisplayMedia | undefined)?.getDisplayMedia === "function";
 }
 
 /** 判断当前环境是否支持 MediaRecorder。 */
@@ -139,10 +136,7 @@ export async function enumerateMediaDevices(): Promise<MediaDeviceSnapshot[]> {
   const mediaDevices = getMediaDevices();
 
   if (typeof mediaDevices.enumerateDevices !== "function") {
-    throw new DOMException(
-      "Media device enumeration is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("Media device enumeration is not supported in the current browser.", "NotSupportedError");
   }
 
   const devices = await mediaDevices.enumerateDevices();
@@ -160,10 +154,7 @@ export async function enumerateMediaDevices(): Promise<MediaDeviceSnapshot[]> {
  *
  * devicechange 只表示设备集合可能改变，监听器中应重新调用 enumerateMediaDevices。
  */
-export function observeMediaDevices(
-  listener: (event: Event) => void,
-  options: ObserveMediaDevicesOptions = {},
-): EventCleanup {
+export function observeMediaDevices(listener: (event: Event) => void, options: ObserveMediaDevicesOptions = {}): EventCleanup {
   const mediaDevices = getMediaDevices();
   const listenerOptions = options.signal ? { signal: options.signal } : undefined;
   return listenEvent(mediaDevices, "devicechange", listener, listenerOptions);
@@ -193,24 +184,15 @@ export function requestUserMedia(options: UserMediaCaptureOptions): Promise<Medi
  * 屏幕采集通常必须由用户手势触发，且浏览器每次都会要求用户选择共享目标。
  * 主动取消或超时后，迟到的媒体流会被立即停止。
  */
-export function requestDisplayMedia(
-  options: DisplayMediaCaptureOptions = {},
-): Promise<MediaStream> {
+export function requestDisplayMedia(options: DisplayMediaCaptureOptions = {}): Promise<MediaStream> {
   const mediaDevices = getMediaDevices() as MediaDevicesWithDisplayMedia;
 
   if (typeof mediaDevices.getDisplayMedia !== "function") {
-    return Promise.reject(
-      new DOMException(
-        "Display media capture is not supported in the current browser.",
-        "NotSupportedError",
-      ),
-    );
+    return Promise.reject(new DOMException("Display media capture is not supported in the current browser.", "NotSupportedError"));
   }
 
   return requestMediaStream(
-    () =>
-      mediaDevices.getDisplayMedia?.(options.constraints) ??
-      Promise.reject(new Error("Display media capture became unavailable.")),
+    () => mediaDevices.getDisplayMedia?.(options.constraints) ?? Promise.reject(new Error("Display media capture became unavailable.")),
     options.signal,
     options.timeout,
     "getDisplayMedia",
@@ -239,19 +221,11 @@ export function getMediaStreamSnapshot(stream: MediaStream): MediaStreamSnapshot
  *
  * kind 为 all 时处理全部轨道。返回实际修改的轨道数量；已结束的轨道不会修改。
  */
-export function setMediaTracksEnabled(
-  stream: MediaStream,
-  enabled: boolean,
-  kind: "audio" | "video" | "all" = "all",
-): number {
+export function setMediaTracksEnabled(stream: MediaStream, enabled: boolean, kind: "audio" | "video" | "all" = "all"): number {
   let changed = 0;
 
   for (const track of stream.getTracks()) {
-    if (
-      track.readyState === "live" &&
-      (kind === "all" || track.kind === kind) &&
-      track.enabled !== enabled
-    ) {
+    if (track.readyState === "live" && (kind === "all" || track.kind === kind) && track.enabled !== enabled) {
       track.enabled = enabled;
       changed += 1;
     }
@@ -284,18 +258,8 @@ export function stopMediaStream(stream: MediaStream): number {
  * 返回 Promise 是因为自动播放可能被浏览器策略拒绝。失败时会恢复元素原状态；
  * 成功后返回幂等清理函数，只有 srcObject 仍是当前流时才恢复，避免覆盖后续绑定。
  */
-export async function attachMediaStream(
-  element: HTMLMediaElement,
-  stream: MediaStream,
-  options: AttachMediaStreamOptions = {},
-): Promise<EventCleanup> {
-  const {
-    autoplay = true,
-    muted = false,
-    playsInline = true,
-    signal,
-    stopTracksOnDetach = false,
-  } = options;
+export async function attachMediaStream(element: HTMLMediaElement, stream: MediaStream, options: AttachMediaStreamOptions = {}): Promise<EventCleanup> {
+  const { autoplay = true, muted = false, playsInline = true, signal, stopTracksOnDetach = false } = options;
 
   if (signal?.aborted) {
     throw getAbortReason(signal);
@@ -364,10 +328,7 @@ export async function attachMediaStream(
  * 默认只解除引用；传入 stopTracks 可同时释放媒体设备。返回之前绑定的流，未绑定
  * MediaStream 时返回 undefined。
  */
-export function detachMediaStream(
-  element: HTMLMediaElement,
-  stopTracks = false,
-): MediaStream | undefined {
+export function detachMediaStream(element: HTMLMediaElement, stopTracks = false): MediaStream | undefined {
   const source = element.srcObject;
   const stream = isMediaStream(source) ? source : undefined;
 
@@ -401,28 +362,18 @@ export function getSupportedRecorderMimeType(candidates: readonly string[]): str
  * preferredMimeTypes 中选择首个受支持类型。事件监听、分片上传与持久化策略
  * 应由业务层决定，基础工具不隐式缓存录制数据。
  */
-export function createMediaRecorder(
-  stream: MediaStream,
-  options: CreateMediaRecorderOptions = {},
-): MediaRecorder {
+export function createMediaRecorder(stream: MediaStream, options: CreateMediaRecorderOptions = {}): MediaRecorder {
   getBrowserWindow();
 
   if (typeof MediaRecorder !== "function") {
-    throw new DOMException(
-      "MediaRecorder is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("MediaRecorder is not supported in the current browser.", "NotSupportedError");
   }
 
   const { preferredMimeTypes = [], ...recorderOptions } = options;
-  const selectedMimeType =
-    recorderOptions.mimeType || getSupportedRecorderMimeType(preferredMimeTypes);
+  const selectedMimeType = recorderOptions.mimeType || getSupportedRecorderMimeType(preferredMimeTypes);
 
   if (recorderOptions.mimeType && !MediaRecorder.isTypeSupported(recorderOptions.mimeType)) {
-    throw new DOMException(
-      `MediaRecorder MIME type is not supported: ${recorderOptions.mimeType}`,
-      "NotSupportedError",
-    );
+    throw new DOMException(`MediaRecorder MIME type is not supported: ${recorderOptions.mimeType}`, "NotSupportedError");
   }
 
   return new MediaRecorder(stream, {
@@ -436,10 +387,7 @@ function getMediaDevices(): MediaDevices {
   const mediaDevices = getBrowserWindow().navigator.mediaDevices;
 
   if (!mediaDevices) {
-    throw new DOMException(
-      "MediaDevices API is not supported in the current browser.",
-      "NotSupportedError",
-    );
+    throw new DOMException("MediaDevices API is not supported in the current browser.", "NotSupportedError");
   }
 
   return mediaDevices;
@@ -451,12 +399,7 @@ function getMediaDevices(): MediaDevices {
  * settled 为 true 后，原生 Promise 若仍返回流，必须立即停止所有轨道，否则摄像头
  * 或麦克风可能在业务已经取消后继续工作。
  */
-function requestMediaStream(
-  request: () => Promise<MediaStream>,
-  signal: AbortSignal | undefined,
-  timeout: number | undefined,
-  operation: string,
-): Promise<MediaStream> {
+function requestMediaStream(request: () => Promise<MediaStream>, signal: AbortSignal | undefined, timeout: number | undefined, operation: string): Promise<MediaStream> {
   if (timeout !== undefined && (!Number.isFinite(timeout) || timeout < 0)) {
     return Promise.reject(new RangeError("timeout must be a non-negative finite number"));
   }

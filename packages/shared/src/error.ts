@@ -36,13 +36,7 @@ export interface AppErrorOptions {
 export type WrapErrorOptions = Omit<AppErrorOptions, "cause">;
 
 /** 可安全 JSON 序列化的值。 */
-export type ErrorJsonValue =
-  | boolean
-  | number
-  | string
-  | null
-  | ErrorJsonValue[]
-  | { readonly [key: string]: ErrorJsonValue };
+export type ErrorJsonValue = boolean | number | string | null | ErrorJsonValue[] | { readonly [key: string]: ErrorJsonValue };
 
 /** 可持久化或发送到日志系统的错误结构。 */
 export interface SerializedError {
@@ -117,20 +111,7 @@ export interface PublicErrorFallback {
   readonly statusCode?: number;
 }
 
-const DEFAULT_SENSITIVE_KEYS = [
-  "password",
-  "passwd",
-  "secret",
-  "clientsecret",
-  "token",
-  "accesstoken",
-  "refreshtoken",
-  "authorization",
-  "cookie",
-  "setcookie",
-  "apikey",
-  "privatekey",
-] as const;
+const DEFAULT_SENSITIVE_KEYS = ["password", "passwd", "secret", "clientsecret", "token", "accesstoken", "refreshtoken", "authorization", "cookie", "setcookie", "apikey", "privatekey"] as const;
 
 /**
  * 带稳定错误码、因果链和安全公开策略的业务错误。
@@ -205,11 +186,7 @@ export function isError(value: unknown): value is Error {
  * }
  */
 export function isErrorLike(value: unknown): value is ErrorLike {
-  return (
-    isObjectRecord(value) &&
-    typeof readProperty(value, "name") === "string" &&
-    typeof readProperty(value, "message") === "string"
-  );
+  return isObjectRecord(value) && typeof readProperty(value, "name") === "string" && typeof readProperty(value, "message") === "string";
 }
 
 /**
@@ -221,10 +198,7 @@ export function isErrorLike(value: unknown): value is ErrorLike {
  *   console.info(error.message);
  * }
  */
-export function isErrorWithName<Name extends string>(
-  error: unknown,
-  name: Name,
-): error is ErrorLike & { readonly name: Name } {
+export function isErrorWithName<Name extends string>(error: unknown, name: Name): error is ErrorLike & { readonly name: Name } {
   return isErrorLike(error) && readProperty(error, "name") === name;
 }
 
@@ -237,10 +211,7 @@ export function isErrorWithName<Name extends string>(
  *   console.warn(fileError.message);
  * }
  */
-export function isErrorWithCode<Code extends string>(
-  error: unknown,
-  code: Code,
-): error is Error & { readonly code: Code } {
+export function isErrorWithCode<Code extends string>(error: unknown, code: Code): error is Error & { readonly code: Code } {
   return isError(error) && readProperty(error, "code") === code;
 }
 
@@ -386,10 +357,7 @@ export function getRootCause(error: unknown, maxDepth = 10): Error {
  * //   details: { username: "alice", accessToken: "[REDACTED]" }
  * // }
  */
-export function serializeError(
-  error: unknown,
-  options: SerializeErrorOptions = {},
-): SerializedError {
+export function serializeError(error: unknown, options: SerializeErrorOptions = {}): SerializedError {
   const resolvedOptions = resolveSerializeOptions(options);
   return serializeErrorValue(error, resolvedOptions, 0, new Set<object>());
 }
@@ -441,11 +409,7 @@ export function deserializeError(serialized: SerializedError): Error {
  * // 使用默认 INTERNAL_ERROR，不泄露内部消息
  */
 export function toPublicError(error: unknown, fallback: PublicErrorFallback = {}): PublicError {
-  const {
-    code = "INTERNAL_ERROR",
-    message = "An unexpected error occurred",
-    statusCode = 500,
-  } = fallback;
+  const { code = "INTERNAL_ERROR", message = "An unexpected error occurred", statusCode = 500 } = fallback;
   assertNonBlankString(code, "fallback.code");
   assertOptionalStatusCode(statusCode, "fallback.statusCode");
 
@@ -472,15 +436,7 @@ interface ResolvedSerializeErrorOptions {
 }
 
 function resolveSerializeOptions(options: SerializeErrorOptions): ResolvedSerializeErrorOptions {
-  const {
-    includeStack = false,
-    includeDetails = false,
-    includeCause = true,
-    maxCauseDepth = 5,
-    maxValueDepth = 5,
-    sensitiveKeys = [],
-    redactedValue = "[REDACTED]",
-  } = options;
+  const { includeStack = false, includeDetails = false, includeCause = true, maxCauseDepth = 5, maxValueDepth = 5, sensitiveKeys = [], redactedValue = "[REDACTED]" } = options;
   assertNonNegativeSafeInteger(maxCauseDepth, "maxCauseDepth");
   assertNonNegativeSafeInteger(maxValueDepth, "maxValueDepth");
 
@@ -490,19 +446,12 @@ function resolveSerializeOptions(options: SerializeErrorOptions): ResolvedSerial
     includeCause,
     maxCauseDepth,
     maxValueDepth,
-    sensitiveKeys: new Set(
-      [...DEFAULT_SENSITIVE_KEYS, ...sensitiveKeys].map(normalizeSensitiveKey),
-    ),
+    sensitiveKeys: new Set([...DEFAULT_SENSITIVE_KEYS, ...sensitiveKeys].map(normalizeSensitiveKey)),
     redactedValue,
   };
 }
 
-function serializeErrorValue(
-  error: unknown,
-  options: ResolvedSerializeErrorOptions,
-  causeDepth: number,
-  seen: Set<object>,
-): SerializedError {
+function serializeErrorValue(error: unknown, options: ResolvedSerializeErrorOptions, causeDepth: number, seen: Set<object>): SerializedError {
   const normalized = toError(error);
   const source = isObjectRecord(error) ? error : normalized;
   const name = getStringProperty(source, "name") ?? normalized.name;
@@ -534,12 +483,7 @@ function serializeErrorValue(
       : {}),
   };
 
-  if (
-    options.includeCause &&
-    cause !== undefined &&
-    causeDepth < options.maxCauseDepth &&
-    !(typeof cause === "object" && cause !== null && seen.has(cause))
-  ) {
+  if (options.includeCause && cause !== undefined && causeDepth < options.maxCauseDepth && !(typeof cause === "object" && cause !== null && seen.has(cause))) {
     return {
       ...result,
       cause: serializeErrorValue(cause, options, causeDepth + 1, seen),
@@ -549,29 +493,18 @@ function serializeErrorValue(
   return result;
 }
 
-function sanitizeErrorDetails(
-  details: Record<PropertyKey, unknown>,
-  options: ResolvedSerializeErrorOptions,
-  seen: Set<object>,
-): Readonly<Record<string, ErrorJsonValue>> {
+function sanitizeErrorDetails(details: Record<PropertyKey, unknown>, options: ResolvedSerializeErrorOptions, seen: Set<object>): Readonly<Record<string, ErrorJsonValue>> {
   const result: Record<string, ErrorJsonValue> = {};
   seen.add(details);
 
   for (const key of getEnumerableKeys(details)) {
-    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key))
-      ? options.redactedValue
-      : sanitizeErrorValue(readProperty(details, key), options, 0, seen);
+    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key)) ? options.redactedValue : sanitizeErrorValue(readProperty(details, key), options, 0, seen);
   }
 
   return result;
 }
 
-function sanitizeErrorValue(
-  value: unknown,
-  options: ResolvedSerializeErrorOptions,
-  depth: number,
-  seen: Set<object>,
-): ErrorJsonValue {
+function sanitizeErrorValue(value: unknown, options: ResolvedSerializeErrorOptions, depth: number, seen: Set<object>): ErrorJsonValue {
   if (value === null || typeof value === "string" || typeof value === "boolean") {
     return value;
   }
@@ -607,9 +540,7 @@ function sanitizeErrorValue(
 
   const result: Record<string, ErrorJsonValue> = {};
   for (const key of getEnumerableKeys(value)) {
-    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key))
-      ? options.redactedValue
-      : sanitizeErrorValue(readProperty(value, key), options, depth + 1, seen);
+    result[key] = options.sensitiveKeys.has(normalizeSensitiveKey(key)) ? options.redactedValue : sanitizeErrorValue(readProperty(value, key), options, depth + 1, seen);
   }
   return result;
 }

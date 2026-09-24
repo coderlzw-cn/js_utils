@@ -45,19 +45,13 @@ export function isPlainObject(value: unknown): value is Record<PropertyKey, unkn
   }
 
   const constructor = Object.getOwnPropertyDescriptor(prototype, "constructor")?.value;
-  return (
-    typeof constructor === "function" &&
-    Function.prototype.toString.call(constructor) === OBJECT_CONSTRUCTOR_SOURCE
-  );
+  return typeof constructor === "function" && Function.prototype.toString.call(constructor) === OBJECT_CONSTRUCTOR_SOURCE;
 }
 
 /**
  * 类型安全地判断对象是否直接拥有指定属性，不会受属性名覆盖或原型链影响。
  */
-export function hasOwn<Key extends PropertyKey>(
-  value: object,
-  key: Key,
-): value is object & Record<Key, unknown> {
+export function hasOwn<Key extends PropertyKey>(value: object, key: Key): value is object & Record<Key, unknown> {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
 
@@ -67,10 +61,7 @@ export function hasOwn<Key extends PropertyKey>(
  * 不存在或位于原型链上的属性会被忽略；`__proto__` 等特殊键通过属性描述符安全写入，
  * 不会修改结果对象的原型。
  */
-export function pick<T extends object, Key extends keyof T>(
-  value: T,
-  keys: readonly Key[],
-): Pick<T, Key> {
+export function pick<T extends object, Key extends keyof T>(value: T, keys: readonly Key[]): Pick<T, Key> {
   const result: Partial<Pick<T, Key>> = {};
 
   for (const key of keys) {
@@ -88,10 +79,7 @@ export function pick<T extends object, Key extends keyof T>(
  *
  * 与对象展开语法不同，本函数也会保留不可枚举属性及 getter/setter。
  */
-export function omit<T extends object, Key extends keyof T>(
-  value: T,
-  keys: readonly Key[],
-): Omit<T, Key> {
+export function omit<T extends object, Key extends keyof T>(value: T, keys: readonly Key[]): Omit<T, Key> {
   const excludedKeys = new Set<PropertyKey>(keys);
   const result = {};
 
@@ -118,20 +106,9 @@ export function omit<T extends object, Key extends keyof T>(
  * @example
  * getIn({ user: { profile: { name: "Ada" } } }, ["user", "profile", "name"]); // "Ada"
  */
-export function getIn<Result = unknown>(
-  value: unknown,
-  path: readonly ObjectPathKey[],
-): Result | undefined;
-export function getIn<Result = unknown, Fallback = undefined>(
-  value: unknown,
-  path: readonly ObjectPathKey[],
-  fallback: Fallback,
-): Result | Fallback;
-export function getIn<Result = unknown, Fallback = undefined>(
-  value: unknown,
-  path: readonly ObjectPathKey[],
-  fallback?: Fallback,
-): Result | Fallback {
+export function getIn<Result = unknown>(value: unknown, path: readonly ObjectPathKey[]): Result | undefined;
+export function getIn<Result = unknown, Fallback = undefined>(value: unknown, path: readonly ObjectPathKey[], fallback: Fallback): Result | Fallback;
+export function getIn<Result = unknown, Fallback = undefined>(value: unknown, path: readonly ObjectPathKey[], fallback?: Fallback): Result | Fallback {
   let current = value;
 
   for (const key of path) {
@@ -150,10 +127,7 @@ export function getIn<Result = unknown, Fallback = undefined>(
  * 回调会依次收到属性值、属性键和原对象。输出为普通对象，所有结果属性均为
  * 可写、可枚举、可配置的数据属性。
  */
-export function mapValues<T extends object, Result>(
-  value: T,
-  mapper: (propertyValue: T[keyof T], key: keyof T, source: T) => Result,
-): Record<keyof T, Result> {
+export function mapValues<T extends object, Result>(value: T, mapper: (propertyValue: T[keyof T], key: keyof T, source: T) => Result): Record<keyof T, Result> {
   const result = {} as Record<keyof T, Result>;
 
   for (const key of getEnumerableOwnKeys(value) as (keyof T)[]) {
@@ -206,10 +180,7 @@ export function deepEqual(first: unknown, second: unknown): boolean {
  * @throws {TypeError} sources 包含非普通对象，或遇到无法克隆的数据结构。
  * @throws {RangeError} arrayStrategy 不是 `replace` 或 `concat`。
  */
-export function deepMerge<T extends Record<PropertyKey, unknown>>(
-  sources: readonly Partial<T>[],
-  options: DeepMergeOptions = {},
-): T {
+export function deepMerge<T extends Record<PropertyKey, unknown>>(sources: readonly Partial<T>[], options: DeepMergeOptions = {}): T {
   const { arrayStrategy = "replace", skipUndefined = true } = options;
   if (arrayStrategy !== "replace" && arrayStrategy !== "concat") {
     throw new RangeError('arrayStrategy must be either "replace" or "concat"');
@@ -320,20 +291,13 @@ function cloneValue<T>(value: T, seen: WeakMap<object, unknown>): T {
     return cloned as T;
   }
 
-  const cloned = Array.isArray(value)
-    ? []
-    : Object.create(Object.getPrototypeOf(value) as object | null);
+  const cloned = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value) as object | null);
   seen.set(value, cloned);
   copyOwnProperties(value, cloned, seen);
   return cloned as T;
 }
 
-function copyOwnProperties(
-  source: object,
-  target: object,
-  seen: WeakMap<object, unknown>,
-  shouldSkip: (key: PropertyKey) => boolean = () => false,
-): void {
+function copyOwnProperties(source: object, target: object, seen: WeakMap<object, unknown>, shouldSkip: (key: PropertyKey) => boolean = () => false): void {
   for (const key of Reflect.ownKeys(source)) {
     if (shouldSkip(key)) {
       continue;
@@ -351,11 +315,7 @@ function copyOwnProperties(
   }
 }
 
-function compareValues(
-  first: unknown,
-  second: unknown,
-  compared: WeakMap<object, WeakSet<object>>,
-): boolean {
+function compareValues(first: unknown, second: unknown, compared: WeakMap<object, WeakSet<object>>): boolean {
   if (Object.is(first, second)) {
     return true;
   }
@@ -363,12 +323,7 @@ function compareValues(
     return false;
   }
   // 函数及无法枚举内部状态的弱集合和 Promise 仅支持引用相等。
-  if (
-    typeof first === "function" ||
-    typeof second === "function" ||
-    isReferenceOnlyObject(first) ||
-    isReferenceOnlyObject(second)
-  ) {
+  if (typeof first === "function" || typeof second === "function" || isReferenceOnlyObject(first) || isReferenceOnlyObject(second)) {
     return false;
   }
   if (Object.getPrototypeOf(first) !== Object.getPrototypeOf(second)) {
@@ -386,28 +341,16 @@ function compareValues(
   }
 
   if (first instanceof Date && second instanceof Date) {
-    return (
-      Object.is(first.getTime(), second.getTime()) && compareOwnProperties(first, second, compared)
-    );
+    return Object.is(first.getTime(), second.getTime()) && compareOwnProperties(first, second, compared);
   }
   if (first instanceof RegExp && second instanceof RegExp) {
-    return (
-      first.source === second.source &&
-      first.flags === second.flags &&
-      compareOwnProperties(first, second, compared)
-    );
+    return first.source === second.source && first.flags === second.flags && compareOwnProperties(first, second, compared);
   }
   if (first instanceof ArrayBuffer && second instanceof ArrayBuffer) {
-    return (
-      compareBytes(new Uint8Array(first), new Uint8Array(second)) &&
-      compareOwnProperties(first, second, compared)
-    );
+    return compareBytes(new Uint8Array(first), new Uint8Array(second)) && compareOwnProperties(first, second, compared);
   }
   if (isSharedArrayBuffer(first) && isSharedArrayBuffer(second)) {
-    return (
-      compareBytes(new Uint8Array(first), new Uint8Array(second)) &&
-      compareOwnProperties(first, second, compared)
-    );
+    return compareBytes(new Uint8Array(first), new Uint8Array(second)) && compareOwnProperties(first, second, compared);
   }
   if (isUrl(first) && isUrl(second)) {
     return first.href === second.href;
@@ -416,18 +359,12 @@ function compareValues(
     return first.toString() === second.toString();
   }
   if (isBoxedPrimitive(first) && isBoxedPrimitive(second)) {
-    return (
-      Object.is(getBoxedPrimitiveValue(first), getBoxedPrimitiveValue(second)) &&
-      compareOwnProperties(first, second, compared)
-    );
+    return Object.is(getBoxedPrimitiveValue(first), getBoxedPrimitiveValue(second)) && compareOwnProperties(first, second, compared);
   }
   if (ArrayBuffer.isView(first) && ArrayBuffer.isView(second)) {
     return (
       first.constructor === second.constructor &&
-      compareBytes(
-        new Uint8Array(first.buffer, first.byteOffset, first.byteLength),
-        new Uint8Array(second.buffer, second.byteOffset, second.byteLength),
-      ) &&
+      compareBytes(new Uint8Array(first.buffer, first.byteOffset, first.byteLength), new Uint8Array(second.buffer, second.byteOffset, second.byteLength)) &&
       compareOwnProperties(first, second, compared)
     );
   }
@@ -438,12 +375,7 @@ function compareValues(
     for (let index = 0; index < first.size; index += 1) {
       const firstEntry = firstEntries.next().value as [unknown, unknown] | undefined;
       const secondEntry = secondEntries.next().value as [unknown, unknown] | undefined;
-      if (
-        !firstEntry ||
-        !secondEntry ||
-        !compareValues(firstEntry[0], secondEntry[0], compared) ||
-        !compareValues(firstEntry[1], secondEntry[1], compared)
-      ) {
+      if (!firstEntry || !secondEntry || !compareValues(firstEntry[0], secondEntry[0], compared) || !compareValues(firstEntry[1], secondEntry[1], compared)) {
         return false;
       }
     }
@@ -461,11 +393,7 @@ function compareValues(
   return compareOwnProperties(first, second, compared);
 }
 
-function compareOwnProperties(
-  first: object,
-  second: object,
-  compared: WeakMap<object, WeakSet<object>>,
-): boolean {
+function compareOwnProperties(first: object, second: object, compared: WeakMap<object, WeakSet<object>>): boolean {
   const firstKeys = Reflect.ownKeys(first);
   const secondKeys = Reflect.ownKeys(second);
   if (firstKeys.length !== secondKeys.length) {
@@ -479,11 +407,7 @@ function compareOwnProperties(
 
     const firstDescriptor = Object.getOwnPropertyDescriptor(first, key);
     const secondDescriptor = Object.getOwnPropertyDescriptor(second, key);
-    if (
-      !firstDescriptor ||
-      !secondDescriptor ||
-      !compareDescriptors(firstDescriptor, secondDescriptor, compared)
-    ) {
+    if (!firstDescriptor || !secondDescriptor || !compareDescriptors(firstDescriptor, secondDescriptor, compared)) {
       return false;
     }
   }
@@ -491,18 +415,8 @@ function compareOwnProperties(
   return true;
 }
 
-function compareDescriptors(
-  first: PropertyDescriptor,
-  second: PropertyDescriptor,
-  compared: WeakMap<object, WeakSet<object>>,
-): boolean {
-  if (
-    first.configurable !== second.configurable ||
-    first.enumerable !== second.enumerable ||
-    first.writable !== second.writable ||
-    first.get !== second.get ||
-    first.set !== second.set
-  ) {
+function compareDescriptors(first: PropertyDescriptor, second: PropertyDescriptor, compared: WeakMap<object, WeakSet<object>>): boolean {
+  if (first.configurable !== second.configurable || first.enumerable !== second.enumerable || first.writable !== second.writable || first.get !== second.get || first.set !== second.set) {
     return false;
   }
 
@@ -544,11 +458,7 @@ function mergePlainObjects(
     let mergedValue: unknown;
     if (isPlainObject(targetValue) && isPlainObject(sourceValue)) {
       mergedValue = mergePlainObjects(targetValue, sourceValue, arrayStrategy, skipUndefined);
-    } else if (
-      arrayStrategy === "concat" &&
-      Array.isArray(targetValue) &&
-      Array.isArray(sourceValue)
-    ) {
+    } else if (arrayStrategy === "concat" && Array.isArray(targetValue) && Array.isArray(sourceValue)) {
       mergedValue = cloneValue([...targetValue, ...sourceValue], new WeakMap<object, unknown>());
     } else {
       mergedValue = cloneValue(sourceValue, new WeakMap<object, unknown>());
@@ -561,9 +471,7 @@ function mergePlainObjects(
 }
 
 function getEnumerableOwnKeys(value: object): PropertyKey[] {
-  return Reflect.ownKeys(value).filter((key) =>
-    Object.prototype.propertyIsEnumerable.call(value, key),
-  );
+  return Reflect.ownKeys(value).filter((key) => Object.prototype.propertyIsEnumerable.call(value, key));
 }
 
 function defineDataProperty(target: object, key: PropertyKey, value: unknown): void {
@@ -612,10 +520,4 @@ function getBoxedPrimitiveValue(value: object): string | number | boolean | bigi
 }
 
 const OBJECT_CONSTRUCTOR_SOURCE = Function.prototype.toString.call(Object);
-const BOXED_PRIMITIVE_TAGS = new Set([
-  "[object String]",
-  "[object Number]",
-  "[object Boolean]",
-  "[object BigInt]",
-  "[object Symbol]",
-]);
+const BOXED_PRIMITIVE_TAGS = new Set(["[object String]", "[object Number]", "[object Boolean]", "[object BigInt]", "[object Symbol]"]);

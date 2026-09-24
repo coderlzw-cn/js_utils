@@ -1,23 +1,7 @@
 /**
  * 支持的压缩包扩展名。
  */
-export const ARCHIVE_EXTENSIONS = [
-  ".zip",
-  ".rar",
-  ".7z",
-  ".tar",
-  ".tar.gz",
-  ".tgz",
-  ".gz",
-  ".gzip",
-  ".tar.bz2",
-  ".tbz",
-  ".tbz2",
-  ".bz2",
-  ".tar.xz",
-  ".txz",
-  ".xz",
-] as const;
+export const ARCHIVE_EXTENSIONS = [".zip", ".rar", ".7z", ".tar", ".tar.gz", ".tgz", ".gz", ".gzip", ".tar.bz2", ".tbz", ".tbz2", ".bz2", ".tar.xz", ".txz", ".xz"] as const;
 
 /**
  * 压缩包扩展名类型。
