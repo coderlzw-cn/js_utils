@@ -1,0 +1,9 @@
+---
+title: IP
+---
+
+判断版本用 `isIP`，它不改写输入。`::ffff:192.168.1.1` 在这里是 IPv6。
+
+要落库或打日志时用 `normalizeIp`：去掉首尾空白和 Zone ID，并把 `::ffff:` 后面紧跟的点分 IPv4 转成 IPv4。超长字符串不会被截断后再校验。
+
+`isPrivateIp` 覆盖 RFC1918、CGNAT、链路本地和 IPv6 ULA，不包含回环。回环用 `isLoopbackIp`。

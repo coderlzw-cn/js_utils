@@ -1,0 +1,9 @@
+---
+title: 断言
+---
+
+类型判断在 `@utils/shared/type`，失败即抛错的断言在 `@utils/shared/assert`。
+
+断言失败抛出 `AssertionError`。默认消息只写期望类型和可选字段名，不写入被校验的值。
+
+`assertFiniteNumber` 这类单值断言需要在声明上写出 `asserts`。由 `defineAssert` 生成的断言都带有显式的 `ValueAssert<T>` 签名。

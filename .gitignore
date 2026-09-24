@@ -5,6 +5,9 @@ node_modules/
 # Build and test output
 dist/
 .turbo/
+apps/docs/content/docs/api/
+apps/docs/.next/
+apps/docs/.source/
 coverage/
 *.tsbuildinfo
 *.tgz

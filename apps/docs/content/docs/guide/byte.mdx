@@ -1,0 +1,12 @@
+---
+title: 存储量与速率
+---
+
+`bit` 和 `Byte` 不能混。`b` 是 bit，`B` 是 Byte，1 Byte = 8 bit。
+
+- SI 按 1000 进位：`KB`、`Mbps`
+- IEC 按 1024 进位：`KiB`、`MiB/s`
+
+存储量只能和存储量换算，速率只能和速率换算。`Mbps` 是兆比特每秒，`MBps` / `MB/s` 是兆字节每秒。
+
+参数不合法时抛出 `AssertionError`，错误码是 `ASSERTION_FAILED`。

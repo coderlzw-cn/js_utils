@@ -1,0 +1,6 @@
+{
+  "extends": "../../packages/browser/tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "ES2022.Intl", "DOM", "DOM.Iterable"]
+  }
+}

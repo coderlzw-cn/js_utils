@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": [".turbo/**", "packages/*/dist/**"],
+  "ignorePatterns": [".turbo/**", "packages/*/dist/**", "apps/docs/content/docs/api/**", "apps/docs/.next/**", "apps/docs/.source/**"],
   "printWidth": 200,
   "tabWidth": 2,
   "useTabs": false,
